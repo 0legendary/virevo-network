@@ -1,8 +1,7 @@
 // src/application/user/getUserDashboard.ts
+import { User } from "../../domain/entities/User";
 import { IUserRepository } from "../../domain/interfaces/IUserRepository";
-import { UserRepository } from "../../infrastructure/repositories/UserRepository";
 
-export const getUserDashboard = async () => {
-  const repo: IUserRepository = new UserRepository();
+export const getUserDashboard = async (repo: IUserRepository): Promise<User[]> => {
   return await repo.getDashboardData();
 };
