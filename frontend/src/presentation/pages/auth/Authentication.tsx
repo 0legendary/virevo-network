@@ -1,7 +1,7 @@
 
 function Authentication() {
   return (
-    <div>
+    <div className="">
       Login/Signup
     </div>
   )
