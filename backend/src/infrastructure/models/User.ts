@@ -32,11 +32,11 @@ export interface IUser extends Document {
 const UserSchema = new Schema<IUser>(
   {
     name: { type: String },
-    anonymousName: { type: String, required: true },
+    anonymousName: { type: String, required: true, unique: true },
     email: { type: String, unique: true, required: true },
     password: { type: String, required: true },
-    role: { type: String, enum: Object.values(UserRole), required: true },
-    isAnonymous: { type: Boolean, default: false },
+    role: { type: String, enum: Object.values(UserRole),default: UserRole.USER },
+    isAnonymous: { type: Boolean, default: true },
     profilePic: { type: String },
     phoneNumber: { type: String },
     bio: { type: String },

@@ -5,7 +5,6 @@ import { useGlobalState } from '../../../application/hooks/useGlobalState';
 import { OtpInputProps, AuthState, AuthMode, Ierrors } from '../../../domain/types/Authentication';
 import { containerVariants, itemVariants } from '../../../constants/design';
 import PasswordInput from './PasswordInput';
-import { CgDanger } from "react-icons/cg";
 import { useApi } from '../../../application/hooks/useApi';
 import { ApiResponse } from '../../../domain/models/requestModel';
 import { ErrorMessage } from '../../components/ErrorMessage';
@@ -203,9 +202,15 @@ const Authentication: React.FC = () => {
       updateState("uiState", { isLoading: true });
       try {
         let response = await verifyNewUser("post", "/auth/new-user", { anonymousName, email });
-        const { success, message } = response as ApiResponse;
+        const { success, message, data } = response as ApiResponse;
         if (!success) {
-          updateState("uiState", { error: { anonymousName: message } });
+          if(data === 'anonymousName'){
+            updateState("uiState", { error: { anonymousName: message } });
+          }else if(data === 'email'){
+            updateState("uiState", { error: { email: message } });
+          }else{
+            updateState("uiState", { error: { verifyError: message } });
+          }
           return
         }
         updateState("uiState", { timer: 30, canResend: false, step: 2 })
@@ -246,7 +251,7 @@ const Authentication: React.FC = () => {
       updateState("uiState", { error: errors });
       return;
     }
-
+    
     updateState("uiState", { isLoading: true });
     try {
       const response = await signInApi("post", "/auth/login", { email: state.formState.email, password: state.formState.password });
@@ -257,6 +262,7 @@ const Authentication: React.FC = () => {
         return;
       }
     } catch (err) {
+      console.log(err);
       updateState("uiState", { error: { signIn: "Something went wrong. Please try again." } });
     } finally {
       updateState("uiState", { isLoading: false });
@@ -494,9 +500,9 @@ const Authentication: React.FC = () => {
                         Forgot password?
                       </motion.button>
                     </motion.div>
-                    <motion.div variants={itemVariants} className="text-center mb-2">
-                      <ErrorMessage message={state.uiState?.error?.signIn} />
-                      <ErrorMessage message={state.uiState?.error?.otp} />
+                    <motion.div variants={itemVariants} className="text-center justify-center mb-2">
+                      <ErrorMessage message={state.uiState?.error?.signIn} centered />
+                      <ErrorMessage message={state.uiState?.error?.otp} centered />
                     </motion.div>
                     <motion.div variants={itemVariants}>
                       <motion.button
@@ -558,8 +564,7 @@ const Authentication: React.FC = () => {
                           {state.uiState.canResend ? "Resend OTP" : `Resend in ${state.uiState.timer}s`}
                         </button>
                       </p>
-                      <ErrorMessage message={state.uiState?.error?.otp} />
-
+                      <ErrorMessage message={state.uiState?.error?.otp} centered />
                     </motion.div>
                     <motion.div variants={itemVariants}>
                       <motion.button
@@ -852,7 +857,7 @@ const Authentication: React.FC = () => {
                             {state.uiState.canResend ? "Resend OTP" : `Resend in ${state.uiState.timer}s`}
                           </button>
                         </p>
-                        <ErrorMessage message={state.uiState?.error?.otp} />
+                        <ErrorMessage message={state.uiState?.error?.otp} centered/>
 
                       </motion.div>
                     </motion.div>
@@ -960,7 +965,7 @@ const Authentication: React.FC = () => {
                   )}
 
                 </AnimatePresence>
-                <ErrorMessage message={state.uiState?.error?.verifyError} />
+                <ErrorMessage message={state.uiState?.error?.verifyError} centered />
 
                 {state.uiState.step < 4 && (
                   <motion.div
