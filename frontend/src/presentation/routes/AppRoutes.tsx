@@ -6,7 +6,7 @@ import UserRoutes from './subRoutes/UserRoutes';
 import PublicRoutes from './subRoutes/PublicRoutes';
 
 // Lazy load auth pages
-const Login = lazy(() => import('../pages/auth/Authentication'));
+const Authentication = lazy(() => import('../pages/auth/Authentication'));
 const NotFound = lazy(() => import('../pages/error/NotFound'));
 const Unauthorized = lazy(() => import('../pages/error/Unauthorized'));
 
@@ -15,7 +15,7 @@ const AppRoutes = () => (
     <Routes>
       {/* Public Routes (For Unauthenticated Users) */}
       <Route element={<PublicRoutes />}>
-        <Route path="/login" element={<Login />} />
+        <Route path="/auth" element={<Authentication />} />
       </Route>
 
       {/* Role-Based Routes */}

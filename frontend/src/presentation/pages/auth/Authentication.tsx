@@ -6,6 +6,9 @@ import { OtpInputProps, AuthState, AuthMode, Ierrors } from '../../../domain/typ
 import { containerVariants, itemVariants } from '../../../constants/design';
 import PasswordInput from './PasswordInput';
 import { CgDanger } from "react-icons/cg";
+import { useApi } from '../../../application/hooks/useApi';
+import { ApiResponse } from '../../../domain/models/requestModel';
+import { ErrorMessage } from '../../components/ErrorMessage';
 
 const OtpInput: React.FC<OtpInputProps> = ({ value, onChange }) => {
   const inputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
@@ -94,6 +97,16 @@ const Authentication: React.FC = () => {
       otpValues: ["", "", "", "", ""],
     },
   });
+  const { request: signInApi } = useApi();
+  const { request: requestOtp } = useApi();
+  const { request: verifyOtp } = useApi();
+  const { request: createAccount } = useApi();
+  const { request: updatePassword } = useApi();
+  const { request: verifyNewUser } = useApi();
+
+
+
+
 
   useEffect(() => {
     if (state.uiState.timer > 0) {
@@ -107,11 +120,102 @@ const Authentication: React.FC = () => {
     }
   }, [state.uiState.timer]);
 
-  const handleResendOtp = () => {
-    updateState("uiState", { timer: 30, canResend: false })
-    console.log("Resending OTP...");
+  const handleSendOtp = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if (state.formState?.email) {
+      updateState("uiState", { isLoading: true });
+      try {
+        let response = await requestOtp("post", "/auth/new-otp", { email: state.formState.email });
+        const { success, message } = response as ApiResponse;
+        if (!success) {
+          updateState("uiState", { error: { otp: message } });
+          return { success: false };
+        }
+        updateState("uiState", { timer: 30, canResend: false })
+        return { success: true };
+      } catch {
+        updateState("uiState", { error: { otp: "OTP not send. Please try again." } });
+        return { success: false };
+      } finally {
+        updateState("uiState", { isLoading: false });
+      }
+    }
   };
-
+  const handleVerifyOtp = async (email: string, otp: string) => {
+    updateState("uiState", { isLoading: true });
+    try {
+      let response = await verifyOtp('post', '/auth/verify-otp', { email, otp });
+      const { success, message } = response as ApiResponse;
+      if (!success) {
+        updateState("uiState", { error: { otp: message } });
+        return;
+      }
+      updateState("uiState", { isVerified: true, step: 3, signInStep: 3 });
+    } catch {
+      updateState("uiState", { error: { otp: "OTP not verified. Please try again." } });
+    } finally {
+      updateState("uiState", { isLoading: false });
+    }
+  }
+  const handleCreateAccount = async (anonymousName: string, email: string, password: string) => {
+    updateState("uiState", { isLoading: true });
+    try {
+      let response = await createAccount('post', '/auth/signup', { anonymousName, email, password });
+      const { success, message } = response as ApiResponse;
+      if (!success) {
+        updateState("uiState", { error: { verifyError: message } });
+        return;
+      }
+      updateState("uiState", { isVerified: true, step: 4 });
+      setTimeout(() => {
+        updateState("uiState", { error: {} });
+        alert('redirecting')
+      }, 3000);
+    } catch {
+      updateState("uiState", { error: { verifyError: "Account not created. Please try again." } });
+    } finally {
+      updateState("uiState", { isLoading: false })
+    }
+  }
+  const handleUpdatePassword = async (email: string, password: string) => {
+    updateState("uiState", { isLoading: true });
+    try {
+      let response = await updatePassword('post', '/auth/update-password', { email, password });
+      const { success, message } = response as ApiResponse;
+      if (!success) {
+        updateState("uiState", { error: { serverError: message } });
+        return;
+      }
+      updateState("uiState", { signInStep: 4 });
+      setTimeout(() => {
+        updateState("uiState", { step: 1, isVerified: false, signInStep: 1 });
+        updateState("formState", { anonymousName: '', password: '', confirmPassword: '', otpValues: ['', '', '', '', ''] })
+        updateState("uiState", { error: {} });
+      }, 3000);
+    } catch {
+      updateState("uiState", { error: { serverError: "Something went wrong. Please try again." } });
+    } finally {
+      updateState("uiState", { isLoading: false });
+    }
+  }
+  const handleVerifyNewUser = async (anonymousName: string, email: string) => {
+    if (email && anonymousName) {
+      updateState("uiState", { isLoading: true });
+      try {
+        let response = await verifyNewUser("post", "/auth/new-user", { anonymousName, email });
+        const { success, message } = response as ApiResponse;
+        if (!success) {
+          updateState("uiState", { error: { anonymousName: message } });
+          return
+        }
+        updateState("uiState", { timer: 30, canResend: false, step: 2 })
+      } catch {
+        updateState("uiState", { error: { verifyError: "Something went wrong. Please try again." } });
+      } finally {
+        updateState("uiState", { isLoading: false });
+      }
+    }
+  };
 
   const resetSignupFlow = () => {
     updateState("uiState", { step: 1, isVerified: false, signInStep: 1 });
@@ -124,40 +228,44 @@ const Authentication: React.FC = () => {
     resetSignupFlow();
   };
 
-  const handleSignin = (e: React.FormEvent) => {
+  // Handle Sign-in
+  const handleSignin = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateState("uiState", { isLoading: true })
     let errors: Ierrors = {};
 
-    if (state.uiState.signInStep === 1) {
-      // Validate email
-      if (!state.formState.email) {
-        errors.email = "Email is required";
-        updateState("uiState", { isLoading: false })
-      } else if (!/^\S+@\S+\.\S+$/.test(state.formState.email)) {
-        updateState("uiState", { isLoading: false })
-        errors.email = "Invalid email format";
-      }
-      if (!state.formState.password) {
-        errors.password = "Password is required";
-      }
-
-      if (Object.keys(errors).length === 0) {
-        updateState("uiState", { isLoading: true });
-        setTimeout(() => {
-          updateState("uiState", { isLoading: false });
-          alert("Sign in successful!");
-        }, 1500);
-      } else {
-        updateState("uiState", { isLoading: false });
-      }
-
-      updateState("uiState", { error: errors });
+    if (!state.formState.email) {
+      errors.email = "Email is required";
+    } else if (!/^\S+@\S+\.\S+$/.test(state.formState.email)) {
+      errors.email = "Invalid email format";
+    }
+    if (!state.formState.password) {
+      errors.password = "Password is required";
     }
 
+    if (Object.keys(errors).length > 0) {
+      updateState("uiState", { error: errors });
+      return;
+    }
+
+    updateState("uiState", { isLoading: true });
+    try {
+      const response = await signInApi("post", "/auth/login", { email: state.formState.email, password: state.formState.password });
+      const { success, message } = response as ApiResponse;
+
+      if (!success) {
+        updateState("uiState", { error: { signIn: message } });
+        return;
+      }
+    } catch (err) {
+      updateState("uiState", { error: { signIn: "Something went wrong. Please try again." } });
+    } finally {
+      updateState("uiState", { isLoading: false });
+    }
   };
 
-  const handleNextStep = (e: React.MouseEvent) => {
+
+  // Handle Next Step
+  const handleNextStep = async (e: React.MouseEvent) => {
     e.preventDefault();
     let errors: Ierrors = {};
 
@@ -170,11 +278,25 @@ const Authentication: React.FC = () => {
       } else if (!/^\S+@\S+\.\S+$/.test(state.formState.email)) {
         errors.email = "Invalid email format";
       }
-    } else if (state.uiState.step === 2) {
+
+      if (Object.keys(errors).length > 0) {
+        updateState("uiState", { error: errors });
+        return;
+      }
+
+      await handleVerifyNewUser(state.formState.anonymousName, state.formState.email)
+    }
+
+    if (state.uiState.step === 2) {
       if (state.formState.otpValues.some((otp) => !otp.trim())) {
         errors.otp = "All OTP fields must be filled";
+        updateState("uiState", { error: errors });
+        return;
       }
-    } else if (state.uiState.step === 3) {
+      await handleVerifyOtp(state.formState.email, state.formState.otpValues.join(""))
+    }
+
+    if (state.uiState.step === 3) {
       if (!state.formState.password.trim()) {
         errors.password = "Password is required";
       } else if (state.uiState.passwordStrength < 4) {
@@ -185,58 +307,51 @@ const Authentication: React.FC = () => {
       } else if (state.formState.password !== state.formState.confirmPassword) {
         errors.confirmPassword = "Passwords do not match";
       }
-    }
 
-    if (Object.keys(errors).length > 0) {
-      updateState("uiState", { error: errors });
-      return;
-    }
-
-    updateState("uiState", { isLoading: true, error: {} });
-
-    setTimeout(() => {
-      if (state.uiState.step === 1) {
-        console.log(state.formState.email, state.formState.anonymousName);
-        updateState("uiState", { isLoading: false, step: 2 });
-      } else if (state.uiState.step === 2) {
-        console.log(state.formState.otpValues);
-        updateState("uiState", { isLoading: false, isVerified: true, step: 3 });
-      } else if (state.uiState.step === 3) {
-        console.log(state.formState.password, state.formState.confirmPassword);
-        updateState("uiState", { isLoading: false, step: 4 });
-        setTimeout(() => {
-          alert("Redirecting to home page...");
-        }, 3000);
+      if (Object.keys(errors).length > 0) {
+        updateState("uiState", { error: errors });
+        return;
       }
-    }, 1500);
+
+      await handleCreateAccount(state.formState.anonymousName, state.formState.email, state.formState.password)
+    }
   };
 
-  const handleForgotPassword = (e: React.MouseEvent) => {
+  const handleForgotPassword = async (e: React.MouseEvent) => {
     e.preventDefault();
     let errors: Ierrors = {};
+
     if (state.uiState.signInStep === 1) {
+
       if (!state.formState.email) {
         errors.email = "Email is required";
       } else if (!/^\S+@\S+\.\S+$/.test(state.formState.email)) {
         errors.email = "Invalid email format";
       }
-      if (!errors.email) {
-        updateState("uiState", { signInStep: 2 });
-      } else {
+      if (Object.keys(errors).length > 0) {
         updateState("uiState", { error: errors });
+        return;
       }
+
+      const response = await handleSendOtp();
+
+      if (response?.success) {
+        updateState("uiState", { signInStep: 2, timer: 30, canResend: false });
+      }
+
     } else if (state.uiState.signInStep === 2) {
 
       if (state.formState.otpValues.some((otp) => !otp.trim())) {
         errors.otp = "All OTP fields must be filled";
       }
-      console.log(errors);
-
-      if (Object.keys(errors).length === 0) {
-        updateState("uiState", { signInStep: 3 });
+      if (Object.keys(errors).length > 0) {
+        updateState("uiState", { error: errors });
+        return;
       }
+      await handleVerifyOtp(state.formState.email, state.formState.otpValues.join(""))
+
     } else if (state.uiState.signInStep === 3) {
-      // Validate passwords
+
       if (!state.formState.password) {
         errors.password = "Password is required";
       } else if (state.formState.password.length < 6) {
@@ -248,14 +363,12 @@ const Authentication: React.FC = () => {
       } else if (state.formState.password !== state.formState.confirmPassword) {
         errors.confirmPassword = "Passwords do not match";
       }
-
-      if (Object.keys(errors).length === 0) {
-        console.log("Reset password:", state.formState.password);
+      if (Object.keys(errors).length > 0) {
+        updateState("uiState", { error: errors });
+        return;
       }
+      await handleUpdatePassword(state.formState.email, state.formState.password)
     }
-
-    // Update errors in state
-    updateState("uiState", { error: errors });
   };
 
 
@@ -333,15 +446,16 @@ const Authentication: React.FC = () => {
                             delete updatedErrors.email;
                             updateState("uiState", { error: updatedErrors });
                           }
+                          if (state.uiState?.error?.otp) {
+                            let updatedErrors = { ...state.uiState.error };
+                            delete updatedErrors.otp;
+                            updateState("uiState", { error: updatedErrors });
+                          }
                         }}
                         className={`w-full px-4 py-3 rounded-lg bg-gray-100 border ${state.uiState.error?.email ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-indigo-500`}
                         placeholder="you@example.com"
                       />
-                      {state.uiState.error?.email && (
-                        <p className="text-red-500 text-sm flex items-center mt-1">
-                          <span className="mr-1"><CgDanger /></span> {state.uiState.error.email}
-                        </p>
-                      )}
+                      <ErrorMessage message={state.uiState?.error?.email} />
                     </motion.div>
 
                     <motion.div variants={itemVariants} className="mb-2">
@@ -372,17 +486,17 @@ const Authentication: React.FC = () => {
                           {state.uiState.showPassword ? <FaEyeSlash /> : <FaEye />}
                         </button>
                       </div>
-                      {state.uiState?.error?.password && (
-                        <p className="text-red-500 text-sm flex items-center mt-1">
-                          <span className="mr-1"><CgDanger /></span> {state.uiState.error.password}
-                        </p>
-                      )}
+                      <ErrorMessage message={state.uiState?.error?.password} />
                     </motion.div>
 
                     <motion.div variants={itemVariants} className="text-right mb-6">
                       <motion.button onClick={handleForgotPassword} className="text-sm hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-450">
                         Forgot password?
                       </motion.button>
+                    </motion.div>
+                    <motion.div variants={itemVariants} className="text-center mb-2">
+                      <ErrorMessage message={state.uiState?.error?.signIn} />
+                      <ErrorMessage message={state.uiState?.error?.otp} />
                     </motion.div>
                     <motion.div variants={itemVariants}>
                       <motion.button
@@ -434,7 +548,7 @@ const Authentication: React.FC = () => {
                       <p className="mt-6 text-sm">
                         Didn't receive the code?{" "}
                         <button
-                          onClick={handleResendOtp}
+                          onClick={handleSendOtp}
                           disabled={!state.uiState.canResend}
                           className={`${state.uiState.canResend
                             ? "text-indigo-600 hover:text-indigo-800 cursor-pointer"
@@ -444,11 +558,8 @@ const Authentication: React.FC = () => {
                           {state.uiState.canResend ? "Resend OTP" : `Resend in ${state.uiState.timer}s`}
                         </button>
                       </p>
-                      {state.uiState?.error?.otp && (
-                        <p className="text-red-500 text-sm flex justify-center items-center mt-1">
-                          <span className="mr-1"><CgDanger /></span> {state.uiState.error.otp}
-                        </p>
-                      )}
+                      <ErrorMessage message={state.uiState?.error?.otp} />
+
                     </motion.div>
                     <motion.div variants={itemVariants}>
                       <motion.button
@@ -504,12 +615,9 @@ const Authentication: React.FC = () => {
                           required
                         />
                       </div>
-                      {state.uiState?.error?.confirmPassword && (
-                        <p className="text-red-500 text-sm flex items-center mt-1">
-                          <span className="mr-1"><CgDanger /></span> {state.uiState.error.confirmPassword}
-                        </p>
-                      )}
+                      <ErrorMessage message={state.uiState?.error?.confirmPassword} />
                     </motion.div>
+                    <ErrorMessage message={state.uiState?.error?.serverError} />
                     <motion.div variants={itemVariants}>
                       <motion.button
                         whileHover={{ scale: state.uiState.isLoading || state.uiState.passwordStrength < 4 || !state.formState.password || !state.formState.confirmPassword || (state.formState.password !== state.formState.confirmPassword) ? 1 : 1.02 }}
@@ -541,20 +649,75 @@ const Authentication: React.FC = () => {
                   </motion.div>
                 )}
 
+                {state.uiState.signInStep === 4 && (
+                  <motion.div
+                    key="step4"
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                    variants={containerVariants}
+                    className="text-center py-8"
+                  >
+                    {/* Success Icon Container */}
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{
+                        type: "spring",
+                        stiffness: 260,
+                        damping: 20,
+                        delay: 0.2
+                      }}
+                      className="w-24 h-24 bg-green-200 rounded-full mx-auto flex items-center justify-center mb-6 shadow-md"
+                    >
+                      <FaCheck className="text-green-700 text-4xl" />
+                    </motion.div>
 
-                <motion.div variants={itemVariants} className="mt-8">
-                  <div className="relative flex items-center">
-                    <div className="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
-                    <span className="flex-shrink mx-4  text-sm">or sign in with</span>
-                    <div className="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
-                  </div>
+                    {/* Success Message */}
+                    <motion.h3
+                      variants={itemVariants}
+                      className="text-2xl font-bold text-gray-900 mb-2"
+                    >
+                      Password Updated Successfully!
+                    </motion.h3>
 
-                  <div className="grid grid-cols-2 gap-3 mt-4">
-                    <SocialButton icon={<FaGoogle className="text-red-500" />} label="Google" />
-                    <SocialButton icon={<FaGithub className="text-gray-800 " />} label="GitHub" />
-                    {/* <SocialButton icon={<FaFacebook className="text-blue-600" />} label="Facebook" /> */}
-                  </div>
-                </motion.div>
+                    <motion.p
+                      variants={itemVariants}
+                      className="text-gray-700 mb-6 leading-relaxed"
+                    >
+                      Redirecting you to the signIn page...
+                    </motion.p>
+
+                    {/* Progress Bar */}
+                    <motion.div variants={itemVariants} className="w-full max-w-xs mx-auto">
+                      <div className="h-1 w-full bg-gray-300 rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: "100%" }}
+                          transition={{ duration: 3 }}
+                          className="h-full bg-indigo-500"
+                        />
+                      </div>
+                    </motion.div>
+                  </motion.div>
+                )}
+
+                {state.uiState.signInStep !== 4 && (
+                  <motion.div variants={itemVariants} className="mt-8">
+                    <div className="relative flex items-center">
+                      <div className="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
+                      <span className="flex-shrink mx-4  text-sm">or sign in with</span>
+                      <div className="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3 mt-4">
+                      <SocialButton icon={<FaGoogle className="text-red-500" />} label="Google" />
+                      <SocialButton icon={<FaGithub className="text-gray-800 " />} label="GitHub" />
+                      {/* <SocialButton icon={<FaFacebook className="text-blue-600" />} label="Facebook" /> */}
+                    </div>
+                  </motion.div>
+                )}
+
               </motion.form>
             ) : (
               <motion.div
@@ -623,11 +786,7 @@ const Authentication: React.FC = () => {
                             } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
                           placeholder="Shadow"
                         />
-                        {state.uiState.error.anonymousName && (
-                          <p className="text-red-500 text-sm flex items-center mt-1">
-                            <span className="mr-1"><CgDanger /></span> {state.uiState.error.anonymousName}
-                          </p>
-                        )}
+                        <ErrorMessage message={state.uiState?.error?.anonymousName} />
                       </motion.div>
 
                       <motion.div variants={itemVariants} className="mb-6">
@@ -650,11 +809,7 @@ const Authentication: React.FC = () => {
                             } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
                           placeholder="you@example.com"
                         />
-                        {state.uiState?.error?.email && (
-                          <p className="text-red-500 text-sm flex items-center mt-1">
-                            <span className="mr-1"><CgDanger /></span> {state.uiState.error.email}
-                          </p>
-                        )}
+                        <ErrorMessage message={state.uiState?.error?.email} />
                       </motion.div>
                     </motion.div>
                   )}
@@ -684,10 +839,10 @@ const Authentication: React.FC = () => {
                             }
                           }}
                         />
-                        <p className="mt-6 text-sm">
+                        <p className="mt-6 text-sm ">
                           Didn't receive the code?{" "}
                           <button
-                            onClick={handleResendOtp}
+                            onClick={handleSendOtp}
                             disabled={!state.uiState.canResend}
                             className={`${state.uiState.canResend
                               ? "text-indigo-600 hover:text-indigo-800  cursor-pointer"
@@ -697,11 +852,8 @@ const Authentication: React.FC = () => {
                             {state.uiState.canResend ? "Resend OTP" : `Resend in ${state.uiState.timer}s`}
                           </button>
                         </p>
-                        {state.uiState.error.otp && (
-                          <p className="text-red-500 text-sm flex items-center mt-1">
-                            <span className="mr-1"><CgDanger /></span> {state.uiState.error.otp}
-                          </p>
-                        )}
+                        <ErrorMessage message={state.uiState?.error?.otp} />
+
                       </motion.div>
                     </motion.div>
                   )}
@@ -747,11 +899,8 @@ const Authentication: React.FC = () => {
                             {state.uiState.showConfirmPassword ? <FaEyeSlash /> : <FaEye />}
                           </button>
                         </div>
-                        {state.uiState?.error?.confirmPassword && (
-                          <p className="text-red-500 text-sm flex items-center mt-1">
-                            <span className="mr-1"><CgDanger /></span> {state.uiState.error.confirmPassword}
-                          </p>
-                        )}
+                        <ErrorMessage message={state.uiState?.error?.confirmPassword} />
+
                       </motion.div>
                     </motion.div>
                   )}
@@ -811,6 +960,7 @@ const Authentication: React.FC = () => {
                   )}
 
                 </AnimatePresence>
+                <ErrorMessage message={state.uiState?.error?.verifyError} />
 
                 {state.uiState.step < 4 && (
                   <motion.div

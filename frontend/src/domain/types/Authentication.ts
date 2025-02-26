@@ -3,7 +3,10 @@ export interface Ierrors {
   email?: string;
   password?: string;
   confirmPassword?: string;
+  signIn?: string;
   otp?: string;
+  serverError?:string;
+  verifyError?:string;
 }
 
 export interface AuthState {
