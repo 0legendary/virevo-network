@@ -19,8 +19,8 @@ const AppRoutes = () => (
       </Route>
 
       {/* Role-Based Routes */}
-      <Route path="/*" element={<SuperAdminRoutes />} />
-      <Route path="/*" element={<AdminRoutes />} />
+      <Route path="/super-admin/*" element={<SuperAdminRoutes />} />
+      <Route path="/admin/*" element={<AdminRoutes />} />
       <Route path="/*" element={<UserRoutes />} />
 
       {/* Common Routes */}

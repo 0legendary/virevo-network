@@ -4,9 +4,27 @@ import { UserModel } from "../../infrastructure/models/User";
 import { storeOTP, verifyOTP } from "../../application/services/otpService";
 import { sendVerificationEmail } from "../../utils/emailService";
 import bcrypt from "bcrypt";
+import { generateAccessToken, generateRefreshToken, TokenPayload, verifyRefreshToken } from "../../application/services/jwtService";
+
+
+export const refreshToken = async (req: Request, res: Response) => {
+    const refreshToken = req.cookies?.refreshToken;
+    if (!refreshToken) {
+        res.status(401).json({ success: false, message: "Refresh token missing" });
+        return
+    }
+
+    const decoded = await verifyRefreshToken(refreshToken);
+    if (!decoded) {
+        res.status(403).json({ success: false, message: "Invalid refresh token" });
+        return
+    }
+
+    const newAccessToken = generateAccessToken(decoded);
+    res.status(200).json({ success: true, accessToken: newAccessToken });
+};
 
 export const login = async (req: Request, res: Response) => {
-    console.log("Logging in user", req.body.requestData);
     try {
         const { email, password } = req.body.requestData;
 
@@ -30,20 +48,33 @@ export const login = async (req: Request, res: Response) => {
             return
         }
 
-        // Exclude password from response
+        const payload: TokenPayload = {
+            _id: user._id,
+            anonymousName: user.anonymousName,
+            email: user.email,
+            role: user.role,
+        };
+
+        const accessToken = generateAccessToken(payload);
+        const refreshToken = generateRefreshToken(payload);
+
         const { password: _, ...userData } = user.toObject();
         const responseData = {
             userData,
+            accessToken
         }
-        // Future JWT space - will implement access/refresh token later
-        // const accessToken = generateAccessToken(user._id);
-        // const refreshToken = generateRefreshToken(user._id);
+
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production", // Only secure in production
+            sameSite: "strict",
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
 
         const response: ApiResponse = {
             success: true,
             message: "Login successful",
             data: responseData,
-            // token: accessToken,
         };
         res.status(200).json(response);
         return
@@ -60,7 +91,6 @@ export const login = async (req: Request, res: Response) => {
 
 
 export const signup = async (req: Request, res: Response) => {
-    console.log("Signing up new user", req.body.requestData);
     try {
         const { anonymousName, email, password } = req.body.requestData;
         const existingUser = await UserModel.findOne({
@@ -84,21 +114,32 @@ export const signup = async (req: Request, res: Response) => {
             password: hashedPassword,
         });
 
-        // Exclude password from response
+        const payload: TokenPayload = {
+            _id: newUser._id,
+            anonymousName: newUser.anonymousName,
+            email: newUser.email,
+            role: newUser.role,
+        };
+
+        const accessToken = generateAccessToken(payload);
+        const refreshToken = generateRefreshToken(payload);
+
         const { password: _, ...userData } = newUser.toObject();
         const responseData = {
             userData,
+            accessToken
         }
-        // Future JWT space - will implement access/refresh token later
-        // const accessToken = generateAccessToken(newUser._id);
-        // const refreshToken = generateRefreshToken(newUser._id);
 
-
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production", // Only secure in production
+            sameSite: "strict",
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        });
         const response: ApiResponse = {
             success: true,
             message: "User registered successfully",
             data: responseData,
-            // token: accessToken,
         };
         res.status(201).json(response);
         return
@@ -114,7 +155,6 @@ export const signup = async (req: Request, res: Response) => {
 };
 
 export const newOtp = async (req: Request, res: Response) => {
-    console.log("Send new OTP",req.body.requestData);
     try {
         const { email } = req.body.requestData;
         const existingUserByEmail = await UserModel.findOne({ email });
@@ -144,7 +184,7 @@ export const newOtp = async (req: Request, res: Response) => {
             message: "OTP sent successfully",
         };
         res.status(200).json(response);
-    } catch (error:any) {
+    } catch (error: any) {
         console.log(error);
 
         const response: ApiResponse = {
@@ -157,7 +197,6 @@ export const newOtp = async (req: Request, res: Response) => {
 
 
 export const newUser = async (req: Request, res: Response) => {
-    console.log("new user", req.body.requestData);
     try {
         const { anonymousName, email } = req.body.requestData;
         const existingUser = await UserModel.findOne({ anonymousName });
@@ -210,7 +249,6 @@ export const newUser = async (req: Request, res: Response) => {
 };
 
 export const verifyOtp = async (req: Request, res: Response) => {
-    console.log("Verifying Otp", req.body.requestData);
     try {
         const { email, otp } = req.body.requestData;
 
@@ -256,7 +294,6 @@ export const verifyOtp = async (req: Request, res: Response) => {
 
 
 export const updatePassword = async (req: Request, res: Response) => {
-    console.log("Updating password", req.body.requestData);
     try {
         const { email, password } = req.body.requestData;
 

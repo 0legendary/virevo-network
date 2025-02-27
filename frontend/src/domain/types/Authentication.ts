@@ -1,3 +1,5 @@
+import { IUser } from "../models/user";
+
 export interface Ierrors {
   anonymousName?: string;
   email?: string;
@@ -5,8 +7,8 @@ export interface Ierrors {
   confirmPassword?: string;
   signIn?: string;
   otp?: string;
-  serverError?:string;
-  verifyError?:string;
+  serverError?: string;
+  verifyError?: string;
 }
 
 export interface AuthState {
@@ -38,3 +40,8 @@ export interface OtpInputProps {
 }
 
 export type AuthMode = 'signin' | 'signup';
+
+export interface AuthResponse {
+  userData: IUser;
+  accessToken: string;
+}

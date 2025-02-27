@@ -2,13 +2,15 @@ import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaGoogle, FaGithub, FaEye, FaEyeSlash, FaCheck } from 'react-icons/fa';
 import { useGlobalState } from '../../../application/hooks/useGlobalState';
-import { OtpInputProps, AuthState, AuthMode, Ierrors } from '../../../domain/types/Authentication';
+import { OtpInputProps, AuthState, AuthMode, Ierrors, AuthResponse } from '../../../domain/types/Authentication';
 import { containerVariants, itemVariants } from '../../../constants/design';
 import PasswordInput from './PasswordInput';
 import { useApi } from '../../../application/hooks/useApi';
 import { ApiResponse } from '../../../domain/models/requestModel';
 import { ErrorMessage } from '../../components/ErrorMessage';
-
+import { useNavigate } from 'react-router-dom';
+import {useDispatch} from "react-redux";
+import { login } from '../../../infrastructure/redux/slices/authSlice';
 const OtpInput: React.FC<OtpInputProps> = ({ value, onChange }) => {
   const inputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
 
@@ -103,6 +105,8 @@ const Authentication: React.FC = () => {
   const { request: updatePassword } = useApi();
   const { request: verifyNewUser } = useApi();
 
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
 
 
@@ -156,11 +160,39 @@ const Authentication: React.FC = () => {
       updateState("uiState", { isLoading: false });
     }
   }
+
+  const handleAuthSuccess = (data: AuthResponse) => {
+    if (!data || !data.accessToken || !data.userData) {
+      console.error("Invalid authentication response");
+      return;
+    }
+
+    dispatch(login({ token: data.accessToken, user: data.userData }));
+
+    switch (data.userData.role) {
+      case "user":
+        navigate("/home");
+        break;
+      case "admin":
+        navigate("/admin/dashboard");
+        break;
+      case "super_admin":
+        navigate("/super-admin/dashboard");
+        break;
+      case "expert":
+        navigate("/expert-panel");
+        break;
+      default:
+        navigate("/unauthorized");
+        break;
+    }
+  };
+
   const handleCreateAccount = async (anonymousName: string, email: string, password: string) => {
     updateState("uiState", { isLoading: true });
     try {
       let response = await createAccount('post', '/auth/signup', { anonymousName, email, password });
-      const { success, message } = response as ApiResponse;
+      const { success, message, data } = response as ApiResponse;
       if (!success) {
         updateState("uiState", { error: { verifyError: message } });
         return;
@@ -168,7 +200,7 @@ const Authentication: React.FC = () => {
       updateState("uiState", { isVerified: true, step: 4 });
       setTimeout(() => {
         updateState("uiState", { error: {} });
-        alert('redirecting')
+        handleAuthSuccess(data)
       }, 3000);
     } catch {
       updateState("uiState", { error: { verifyError: "Account not created. Please try again." } });
@@ -176,6 +208,46 @@ const Authentication: React.FC = () => {
       updateState("uiState", { isLoading: false })
     }
   }
+  // Handle Sign-in
+  const handleSignin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    let errors: Ierrors = {};
+
+    if (!state.formState.email) {
+      errors.email = "Email is required";
+    } else if (!/^\S+@\S+\.\S+$/.test(state.formState.email)) {
+      errors.email = "Invalid email format";
+    }
+    if (!state.formState.password) {
+      errors.password = "Password is required";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      updateState("uiState", { error: errors });
+      return;
+    }
+
+    updateState("uiState", { isLoading: true });
+    try {
+      const response = await signInApi("post", "/auth/login", { email: state.formState.email, password: state.formState.password });
+      const { success, message, data } = response as ApiResponse;
+
+      if (!success) {
+        updateState("uiState", { error: { signIn: message } });
+        return;
+      }
+      updateState("uiState", { isVerified: true, signInStep: 4 });
+      setTimeout(() => {
+        updateState("uiState", { error: {} });
+        handleAuthSuccess(data)
+      }, 3000);
+    } catch (err) {
+      console.log(err);
+      updateState("uiState", { error: { signIn: "Something went wrong. Please try again." } });
+    } finally {
+      updateState("uiState", { isLoading: false });
+    }
+  };
   const handleUpdatePassword = async (email: string, password: string) => {
     updateState("uiState", { isLoading: true });
     try {
@@ -204,11 +276,11 @@ const Authentication: React.FC = () => {
         let response = await verifyNewUser("post", "/auth/new-user", { anonymousName, email });
         const { success, message, data } = response as ApiResponse;
         if (!success) {
-          if(data === 'anonymousName'){
+          if (data === 'anonymousName') {
             updateState("uiState", { error: { anonymousName: message } });
-          }else if(data === 'email'){
+          } else if (data === 'email') {
             updateState("uiState", { error: { email: message } });
-          }else{
+          } else {
             updateState("uiState", { error: { verifyError: message } });
           }
           return
@@ -233,41 +305,6 @@ const Authentication: React.FC = () => {
     resetSignupFlow();
   };
 
-  // Handle Sign-in
-  const handleSignin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    let errors: Ierrors = {};
-
-    if (!state.formState.email) {
-      errors.email = "Email is required";
-    } else if (!/^\S+@\S+\.\S+$/.test(state.formState.email)) {
-      errors.email = "Invalid email format";
-    }
-    if (!state.formState.password) {
-      errors.password = "Password is required";
-    }
-
-    if (Object.keys(errors).length > 0) {
-      updateState("uiState", { error: errors });
-      return;
-    }
-    
-    updateState("uiState", { isLoading: true });
-    try {
-      const response = await signInApi("post", "/auth/login", { email: state.formState.email, password: state.formState.password });
-      const { success, message } = response as ApiResponse;
-
-      if (!success) {
-        updateState("uiState", { error: { signIn: message } });
-        return;
-      }
-    } catch (err) {
-      console.log(err);
-      updateState("uiState", { error: { signIn: "Something went wrong. Please try again." } });
-    } finally {
-      updateState("uiState", { isLoading: false });
-    }
-  };
 
 
   // Handle Next Step
@@ -857,7 +894,7 @@ const Authentication: React.FC = () => {
                             {state.uiState.canResend ? "Resend OTP" : `Resend in ${state.uiState.timer}s`}
                           </button>
                         </p>
-                        <ErrorMessage message={state.uiState?.error?.otp} centered/>
+                        <ErrorMessage message={state.uiState?.error?.otp} centered />
 
                       </motion.div>
                     </motion.div>
