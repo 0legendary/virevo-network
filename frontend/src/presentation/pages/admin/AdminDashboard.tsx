@@ -10,7 +10,6 @@ const AdminDashboard = () => {
 
   const fetchAdminsCallback = useCallback(() => {
     fetchAdmins('get', '/admins').then((data) => {
-      if (data) setAdminList(data);
     });
   }, [fetchAdmins]);
 

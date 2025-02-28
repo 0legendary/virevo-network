@@ -4,11 +4,16 @@ import { RequestModel } from '../../domain/models/requestModel';
 import { AxiosError } from 'axios';
 
 type ApiMethod = 'get' | 'post' | 'put' | 'delete';
+interface ApiResponse<T> {  // Define an interface for the API response
+    success: boolean;
+    data?: T;
+    message?: string;
+}
 
 export const useApi = <T, R = unknown>() => {
     const [loading, setLoading] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
-    const [data, setData] = useState<T | null>(null);
+    const [data, setData] = useState<ApiResponse<T> | null>(null);
 
     const request = async (method: ApiMethod, url: string, requestData?: R) => {
         setLoading(true);
@@ -25,9 +30,8 @@ export const useApi = <T, R = unknown>() => {
                 };
                 response = await apiClient[method]<{ success: boolean; data: T }>(url, requestPayload);
             }
-
-            setData(response.data.data);
-            return response.data.data;
+            setData(response.data);
+            return response.data;
         } catch (err: unknown) {
             const axiosError = err as AxiosError<{ message: string }>;
             setError(axiosError.response?.data?.message || 'Something went wrong');
