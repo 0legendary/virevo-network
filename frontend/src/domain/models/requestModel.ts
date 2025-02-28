@@ -3,3 +3,10 @@ export interface RequestModel<T> {
     timestamp: string;  // ISO Timestamp
     requestData: T;     // Dynamic Data (Can be anything)
 }
+
+export interface ApiResponse<T = any> {
+    success: boolean;
+    message: string;
+    data?: T;
+  }
+  

@@ -24,6 +24,7 @@
     "concurrently": "^9.1.2"
   },
   "dependencies": {
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "react-redux": "^9.2.0"
   }
 }

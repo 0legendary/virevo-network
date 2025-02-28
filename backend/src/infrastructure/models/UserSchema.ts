@@ -9,6 +9,7 @@ export enum UserRole {
 
 export interface IUser extends Document {
   name: string;
+  anonymousName: string;
   email: string;
   password: string;
   role: UserRole;
@@ -24,17 +25,25 @@ export interface IUser extends Document {
     ratings: number[];
   };
   walletBalance: number;
+  privacySettings: {
+    showProfile: boolean;
+    showLastSeen: boolean;
+    showOnlineStatus: boolean;
+  };
+  rating: { totalPoints: number; ratedBy: number };
+  notifications: { type: string; read: boolean; createdAt: Date }[];
   createdAt: Date;
   updatedAt: Date;
 }
 
 const UserSchema = new Schema<IUser>(
   {
-    name: { type: String, required: true },
+    name: { type: String },
+    anonymousName: { type: String, required: true, unique: true },
     email: { type: String, unique: true, required: true },
     password: { type: String, required: true },
-    role: { type: String, enum: Object.values(UserRole), required: true },
-    isAnonymous: { type: Boolean, default: false },
+    role: { type: String, enum: Object.values(UserRole), default: UserRole.USER },
+    isAnonymous: { type: Boolean, default: true },
     profilePic: { type: String },
     phoneNumber: { type: String },
     bio: { type: String },
@@ -46,6 +55,22 @@ const UserSchema = new Schema<IUser>(
       ratings: [{ type: Number }],
     },
     walletBalance: { type: Number, default: 0 },
+    privacySettings: {
+      showProfile: { type: Boolean, default: true },
+      showLastSeen: { type: Boolean, default: true },
+      showOnlineStatus: { type: Boolean, default: true },
+    },
+    rating: {
+      totalPoints: { type: Number, default: 0 },
+      ratedBy: { type: Number, default: 0 },
+    },
+    notifications: [
+      {
+        type: { type: String },
+        read: { type: Boolean, default: false },
+        createdAt: { type: Date, default: Date.now },
+      },
+    ],
   },
   { timestamps: true }
 );
