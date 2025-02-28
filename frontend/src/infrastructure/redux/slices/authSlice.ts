@@ -6,6 +6,7 @@ interface AuthState {
   token: string | null;
   role: string | null;
   currUserID: string | null;
+  theme: string | 'light'
 }
 
 const initialState: AuthState = {
@@ -13,6 +14,7 @@ const initialState: AuthState = {
   currUserID: localStorage.getItem('currUserID'),
   token: localStorage.getItem('token'),
   role: localStorage.getItem('role'),
+  theme: localStorage.getItem('theme') || 'light'
 };
 
 const authSlice = createSlice({
@@ -36,8 +38,12 @@ const authSlice = createSlice({
       localStorage.removeItem('role');
       localStorage.removeItem('currUserID');
     },
+    toggleTheme: (state) => {
+      state.theme = state.theme === 'light' ? 'dark' : 'light';
+      localStorage.setItem('theme', state.theme);
+    },
   },
 });
 
-export const { login, logout } = authSlice.actions;
+export const { login, logout,toggleTheme } = authSlice.actions;
 export default authSlice.reducer;

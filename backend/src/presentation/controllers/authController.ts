@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { ApiResponse } from "../dto/ApiResponse";
-import { UserModel } from "../../infrastructure/models/User";
+import { UserModel } from "../../infrastructure/models/UserSchema";
 import { storeOTP, verifyOTP } from "../../application/services/otpService";
 import { sendVerificationEmail } from "../../utils/emailService";
 import bcrypt from "bcrypt";

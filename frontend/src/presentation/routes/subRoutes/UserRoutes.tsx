@@ -8,7 +8,7 @@ const UserDashboard = lazy(() => import('../../pages/user/UserDashboard'));
 const UserRoutes = () => (
   <Routes>
     <Route element={<PrivateRoutes allowedRoles={['user']} />}>
-      <Route path="dashboard" element={<UserDashboard />} />
+      <Route path="" element={<UserDashboard />} />
     </Route>
   </Routes>
 );
