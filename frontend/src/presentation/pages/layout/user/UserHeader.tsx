@@ -44,7 +44,7 @@ function UserHeader() {
 
   return (
     <motion.header
-      className="fixed top-0 left-0 right-0 z-50 bg-card-background shadow-md transition-colors duration-300"
+      className="fixed top-0 left-0 w-full z-10 right-0 bg-card-background shadow-md transition-colors duration-300"
       style={{
         backgroundColor: 'var(--card-background)',
         boxShadow: 'var(--box-shadow)',

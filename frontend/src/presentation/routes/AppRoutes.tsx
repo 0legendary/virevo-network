@@ -16,10 +16,11 @@ const UserLayout = () => {
   return (
     <>
       <UserHeader />
-      <main className='pt-18 transition-colors duration-300'>
-        <Outlet />
+      <main className="transition-colors duration-300 pt-15" style={{ overflowY: 'hidden' }}>
+        <Outlet/>
       </main>
       <UserRedirects />
+
     </>
   );
 };
