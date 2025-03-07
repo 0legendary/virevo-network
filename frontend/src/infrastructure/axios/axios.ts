@@ -33,8 +33,8 @@ const refreshAccessToken = async () => {
     }
   } catch (error) {
     console.error("Failed to refresh token", error);
-    localStorage.removeItem("token");
-    window.location.href = "/auth";
+    // localStorage.removeItem("token");
+    // window.location.href = "/auth";
     return null;
   }
 };

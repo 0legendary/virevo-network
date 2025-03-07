@@ -7,10 +7,8 @@ interface PrivateRouteProps {
 const PrivateRoutes = ({ allowedRoles }: PrivateRouteProps) => {
   const userRole = localStorage.getItem('role');
   const token = localStorage.getItem('token');
-  console.log('userRole:', userRole);
-  console.log('token:', token);
   
-  if (!token) return <Navigate to="/login" replace />;
+  if (!token) return <Navigate to="/auth" replace />;
   if (!allowedRoles.includes(userRole || '')) return <Navigate to="/unauthorized" replace />;
 
   return <Outlet />;
