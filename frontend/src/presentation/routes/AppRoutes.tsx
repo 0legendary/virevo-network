@@ -14,16 +14,16 @@ const Unauthorized = lazy(() => import('../pages/error/Unauthorized'));
 
 const UserLayout = () => {
   return (
-    <>
+    <div className="flex flex-col overflow-hidden h-screen">
       <UserHeader />
-      <main className="transition-colors duration-300 pt-15" style={{ overflowY: 'hidden' }}>
-        <Outlet/>
+      <main className="flex-1 content-wrapper overflow-auto">
+        <Outlet />
       </main>
-      <UserRedirects />
-
-    </>
+      {/* <UserRedirects /> */}
+    </div>
   );
 };
+
 
 const AppRoutes = () => (
   <Suspense fallback={<div>Loading...</div>}>

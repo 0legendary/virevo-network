@@ -103,7 +103,7 @@
 
 /* Base Styles */
 body {
-  overflow: hidden;
+  /* overflow: hidden; */
   font-family: var(--font-body);
   font-size: var(--font-size-md);
   color: var(--text-primary);
@@ -112,6 +112,7 @@ body {
   background-image: var(--gradient-primary);
   min-height: 100vh;
 }
+
 
 /* Card Styles */
 .card {
@@ -283,6 +284,40 @@ body {
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 }
+
+/* Global Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-secondary);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-hover);
+}
+
+/* Dark Mode Scrollbar */
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: var(--secondary-background);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: var(--text-secondary);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-hover);
+}
+
 
 @layer base {
   * {

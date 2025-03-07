@@ -1,7 +1,7 @@
 import mongoose, { Schema, Document } from "mongoose";
 
 export enum ChatType {
-  ONE_TO_ONE = "one_to_one",
+  PRIVATE = "private",
   GROUP = "group",
 }
 

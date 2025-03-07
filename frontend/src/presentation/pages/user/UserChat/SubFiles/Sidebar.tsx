@@ -23,7 +23,7 @@ const Sidebar = () => {
       initial={{ x: "-100%" }}
       animate={{ x: 0 }}
       transition={{ type: "keyframes", stiffness: 100 }}
-      className="h-screen shadow-lg flex flex-col my-bg my-text"
+      className="shadow-lg flex flex-col my-bg my-text min-h-199 max-h-199"
     >
       {/* Top Bar */}
       <div className="flex items-center justify-between p-4 border-b my-border">
