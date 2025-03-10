@@ -4,8 +4,8 @@ import mongoose from 'mongoose';
 
 interface ChatState {
     chats: IChat[];
-    selectedChatId: string | null;
-    messages: Record<string, IMessage[]>; // Storing messages by chatId
+    selectedChat: IChat | null;
+    messages: Record<string, IMessage[]>;
     loading: boolean;
     error: string | null;
     isChatDetailsOpen: boolean;
@@ -13,7 +13,7 @@ interface ChatState {
 
 const initialState: ChatState = {
     chats: [],
-    selectedChatId: null,
+    selectedChat: null,
     messages: {},
     loading: false,
     error: null,
@@ -27,12 +27,11 @@ const chatSlice = createSlice({
         setChats(state, action: PayloadAction<IChat[]>) {
             state.chats = action.payload;
         },
-        setSelectedChatId(state, action: PayloadAction<string | null>) {
-            state.selectedChatId = action.payload;
+        setSelectedChat(state, action: PayloadAction<IChat | null>) {
+            state.selectedChat = action.payload;
         },
-        setMessages(state, action: PayloadAction<{ chatId: mongoose.Types.ObjectId; messages: IMessage[] }>) {
-            const chatIdStr = action.payload.chatId.toString();  // ✅ Convert ObjectId to string
-            state.messages[chatIdStr] = action.payload.messages;
+        setMessages(state, action: PayloadAction<{ chatId: string; messages: IMessage[] }>) {
+            state.messages[action.payload.chatId] = action.payload.messages;
         },
         addMessage(state, action: PayloadAction<IMessage>) {
             const chatIdStr = action.payload.chatId.toString();
@@ -44,12 +43,11 @@ const chatSlice = createSlice({
         
             // Append the new message
             state.messages[chatIdStr] = [...state.messages[chatIdStr], action.payload];
-        
-            // Update sidebar last message
-            const chatIndex = state.chats.findIndex(chat => chat._id.toString() === chatIdStr);
-            if (chatIndex !== -1) {
-                state.chats[chatIndex].lastMessage = action.payload.content;
-            }
+            // // Update sidebar last message
+            // const chatIndex = state.chats.findIndex(chat => chat._id.toString() === chatIdStr);
+            // if (chatIndex !== -1) {
+            //     state.chats[chatIndex].lastMessage = action.payload.content;
+            // }
         },
         updateMessage(state, action: PayloadAction<IMessage>) {
             const chatIdStr = action.payload.chatId.toString();
@@ -77,30 +75,30 @@ const chatSlice = createSlice({
             state.isChatDetailsOpen = action.payload;
         },
         setMessageSeen(state, action: PayloadAction<{ chatId: String; messageId: string; userId: string }>) {
-            const chatIdStr = action.payload.chatId.toString();
-            const messageIdStr = action.payload.messageId.toString();
+            // const chatIdStr = action.payload.chatId.toString();
+            // const messageIdStr = action.payload.messageId.toString();
 
-            if (state.messages[chatIdStr]) {
-                state.messages[chatIdStr] = state.messages[chatIdStr].map((msg) => {
-                  const seenByList = msg.seenBy ?? [];
+            // if (state.messages[chatIdStr]) {
+            //     state.messages[chatIdStr] = state.messages[chatIdStr].map((msg) => {
+            //       const seenByList = msg.seenBy ?? [];
             
-                  return msg._id.toString() === messageIdStr
-                    ? {
-                        ...msg,
-                        seenBy: seenByList.includes(action.payload.userId)
-                          ? seenByList
-                          : [...seenByList, action.payload.userId],
-                      }
-                    : msg;
-                });
-              }
+            //       return msg._id.toString() === messageIdStr
+            //         ? {
+            //             ...msg,
+            //             seenBy: seenByList.includes(action.payload.userId)
+            //               ? seenByList
+            //               : [...seenByList, action.payload.userId],
+            //           }
+            //         : msg;
+            //     });
+            //   }
         },
     },
 });
 
 export const {
     setChats,
-    setSelectedChatId,
+    setSelectedChat,
     setMessages,
     addMessage,
     updateMessage,

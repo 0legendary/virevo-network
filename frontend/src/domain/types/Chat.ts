@@ -5,17 +5,37 @@ export enum ChatType {
     GROUP = 'group',
 }
 
+export interface IParticipant {
+    _id: string;
+    name: string;
+    email: string;
+    profilePic: string | null;
+}
+
+export interface ILastMessage {
+    content: string;
+    sender: {
+        _id: string;
+        name: string;
+        profilePic: string;
+    };
+    type: MessageType;
+    sentAt: Date;
+    deliveredAt?: Date;
+    seenBy?: { userId: string; seenAt: Date }[];
+}
+
 export interface IChat {
     _id: string;
     type: ChatType;
-    participants: string[];
+    participants: IParticipant[];
     groupName?: string;
-    groupPic?: string;
-    isPrivate?: boolean;
-    isPremium?: boolean;
-    consultationFee?: number;
+    groupPic?: string | null;
+    isPrivate: boolean;
+    isPremium: boolean;
+    consultationFee: number;
     backgroundImage?: string;
-    lastMessage: string;
+    lastMessage?: ILastMessage;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -34,7 +54,11 @@ export enum MessageType {
 export interface IMessage {
     _id: string;
     chatId: string;
-    sender: string;
+    sender: {
+        _id: string;
+        name: string;
+        profilePic?: string;
+    };
     type: MessageType;
     content: string;
     mediaUrl?: string;
@@ -42,15 +66,14 @@ export interface IMessage {
     replyTo?: string | null;
     scheduledAt?: Date | null;
     autoDeleteAt?: Date | null;
-    seenBy?: string[]; 
+    seenBy?: { userId: string; seenAt: Date }[];
     createdAt: Date;
     updatedAt: Date;
 }
 
-
 export interface IChatReducer {
     chats: IChat[];
-    selectedChatId: string | null;
+    selectedChat: IChat | null;
     messages: IMessage[];
     loading: boolean;
     error: string | null;
@@ -71,9 +94,10 @@ export interface IMessageUpdatePayload {
 
 export interface SideBarUIState {
     uiState: {
+        isLoading: boolean;
         isMenuOpen: boolean;
         activeFilter: string;
-    }
+    };
 }
 
 export interface IChatPage {

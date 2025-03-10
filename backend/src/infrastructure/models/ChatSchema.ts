@@ -14,6 +14,13 @@ export interface IChat extends Document {
   isPremium?: boolean;
   consultationFee?: number;
   backgroundImage?: string;
+  lastMessage?: {
+    messageId: mongoose.Types.ObjectId;
+    sender: mongoose.Types.ObjectId;
+    content: string;
+    type: string;
+    sentAt: Date;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,6 +35,13 @@ const ChatSchema = new Schema<IChat>(
     isPremium: { type: Boolean, default: false },
     consultationFee: { type: Number },
     backgroundImage: { type: String },
+    lastMessage: {
+      messageId: { type: Schema.Types.ObjectId, ref: "Message" },
+      sender: { type: Schema.Types.ObjectId, ref: "User" },
+      content: { type: String },
+      type: { type: String },
+      sentAt: { type: Date },
+    },
   },
   { timestamps: true }
 );

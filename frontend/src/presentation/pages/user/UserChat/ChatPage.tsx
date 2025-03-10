@@ -70,9 +70,9 @@ const ChatPage = () => {
             exit={{ x: isMobile ? -300 : -100, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
           >
-            <div className={`flex flex-col bg-white dark:bg-gray-800 shadow-lg`}>
+            <div className={`flex flex-col my-bg shadow-lg`}>
               {isMobile && (
-                <div className={`flex items-center h-16 px-4 border-b border-gray-700 dark:border-gray-200`}>
+                <div className={`flex items-center h-16 px-4 border-b my-border`}>
                   <button
                     onClick={handleBack}
                     className={`mr-3 rounded-full p-2 dark:hover:bg-gray-700 hover:bg-gray-100`}
