@@ -1,19 +1,26 @@
 import { motion } from "framer-motion";
 import { MoreVertical, MessageSquarePlus, Search, User, Check, CheckCheck } from "lucide-react";
 import { useGlobalState } from "@/application/hooks/useGlobalState";
-import { ChatType, IChat, IMessage, MessageType, SideBarUIState } from "@/domain/types/Chat";
+import { ChatType, IChat, IMessage, MessageType } from "@/domain/types/Chat";
 import { useApi } from "@/application/hooks/useApi";
 import { ApiResponse } from "@/domain/models/requestModel";
 import { useDispatch, useSelector } from "react-redux";
-import { setChats, setSelectedChat } from "@/infrastructure/redux/slices/chatSlice";
+import { setChats, setSelectedChat, toggleNewConnection } from "@/infrastructure/redux/slices/chatSlice";
 import { RootState } from "@/infrastructure/redux/store";
 import { useEffect } from "react";
 import { format } from "date-fns";
 
 // Helper to generate mock ObjectId
+export interface SideBarUIState {
+  uiState: {
+    isLoading: boolean;
+    isMenuOpen: boolean;
+    activeFilter: string;
+  };
+}
 
 const Sidebar = () => {
-  const chatHistory = useSelector((state: RootState) => state.chat.chats);
+  const chatData = useSelector((state: RootState) => state.chat);
   const currUser = useSelector((state: RootState) => state.auth.currUser);
   const dispatch = useDispatch()
   const { request: fetchChatsAndMessages } = useApi();
@@ -164,7 +171,9 @@ const Sidebar = () => {
       <div className="flex items-center justify-between p-4 border-b my-border">
         <h2 className="text-lg font-semibold">Chats</h2>
         <div className="flex gap-3">
-          <MessageSquarePlus className="w-6 h-6 cursor-pointer my-text" />
+          <div onClick={() => dispatch(toggleNewConnection(!chatData.isNewConnectOpen))}>
+            <MessageSquarePlus className="w-6 h-6 cursor-pointer my-text" />
+          </div>
           <div className="relative">
             <MoreVertical
               className="w-6 h-6 cursor-pointer my-text"
@@ -193,6 +202,7 @@ const Sidebar = () => {
       </div>
 
       {/* Filter Options */}
+      {!chatData.isNewConnectOpen && (
       <div className="flex gap-2 px-3">
         {["All", "Unread", "Fav", "Groups"].map((filter) => (
           <button
@@ -204,51 +214,72 @@ const Sidebar = () => {
           </button>
         ))}
       </div>
+      )}
 
       {/* Chat List */}
-      <div className="flex-1 overflow-y-auto p-2 my-text">
-        {chatHistory.map((chat) => {
-          const isGroup = !chat.isPrivate;
-          const otherParticipant = chat.participants.find(p => p._id !== currUser?._id);
-          const displayName = isGroup ? chat.groupName : otherParticipant?.name;
-          const displayPic = isGroup ? chat.groupPic : otherParticipant?.profilePic;
+      {!chatData.isNewConnectOpen && (
+        <div className="flex-1 overflow-y-auto p-2 my-text">
+          {chatData.chats.map((chat) => {
+            const isGroup = !chat.isPrivate;
+            const otherParticipant = chat.participants.find(p => p._id !== currUser?._id);
+            const displayName = isGroup ? chat.groupName : otherParticipant?.name;
+            const displayPic = isGroup ? chat.groupPic : otherParticipant?.profilePic;
 
-          const lastMessage = chat.lastMessage;
-          const isSentByCurrentUser = lastMessage?.sender?._id === currUser?._id;
+            const lastMessage = chat.lastMessage;
+            const isSentByCurrentUser = lastMessage?.sender?._id === currUser?._id;
 
-          let messageStatus = <Check size={14} className="ml-1" />; // Sent
-          if (lastMessage?.deliveredAt)
-            messageStatus =
-              <div className="flex ml-1">
-                <CheckCheck size={14} />
-              </div>
-          if (lastMessage?.seenBy?.length)
-            messageStatus =
-              <div className="flex ml-1 text-blue-500">
-                <CheckCheck size={14} />
-              </div>;
-
-          return (
-            <div key={chat._id} onClick={() => {dispatch(setSelectedChat(chat))}} className="flex justify-between items-center p-3 border-b hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer">
-              <div className="flex gap-3">
-                {displayPic ? (
-                  <img src={displayPic} alt={displayName} className="w-10 h-10 rounded-full object-cover" />
-                ) : (
-                  <User className="w-10 h-10 p-1.5 rounded-full my-bg-secondary" />
-                )}
-                <div>
-                  <h3 className="text-sm font-semibold">{displayName}</h3>
-                  <p className="text-xs flex items-center gap-1">
-                    <span className={'message-status'}>{messageStatus}</span>
-                    {lastMessage?.content}
-                  </p>
+            let messageStatus = <Check size={14} className="ml-1" />; // Sent
+            if (lastMessage?.deliveredAt)
+              messageStatus =
+                <div className="flex ml-1">
+                  <CheckCheck size={14} />
                 </div>
+            if (lastMessage?.seenBy?.length)
+              messageStatus =
+                <div className="flex ml-1 text-blue-500">
+                  <CheckCheck size={14} />
+                </div>;
+
+            return (
+              <div key={chat._id} onClick={() => { dispatch(setSelectedChat(chat)) }} className="flex justify-between items-center p-3 border-b hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer">
+                <div className="flex gap-3">
+                  {displayPic ? (
+                    <img src={displayPic} alt={displayName} className="w-10 h-10 rounded-full object-cover" />
+                  ) : (
+                    <User className="w-10 h-10 p-1.5 rounded-full my-bg-secondary" />
+                  )}
+                  <div>
+                    <h3 className="text-sm font-semibold">{displayName}</h3>
+                    <p className="text-xs flex items-center gap-1">
+                      <span className={'message-status'}>{messageStatus}</span>
+                      {lastMessage?.content}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-xs">{formatTimestamp(lastMessage?.sentAt)}</div>
               </div>
-              <div className="text-xs">{formatTimestamp(lastMessage?.sentAt)}</div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* New Group Modal */}
+      {chatData.isNewConnectOpen && (
+        <div className="flex-1 overflow-y-auto p-2 my-text">
+          <div className="flex justify-between items-center p-3 border-b hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer">
+            <div className="flex gap-3">
+              <User className="w-10 h-10 p-1.5 rounded-full my-bg-secondary" />
+              <h3 className="text-sm font-semibold flex items-center gap-1">New Chat</h3>
             </div>
-          );
-        })}
-      </div>
+          </div>
+          <div className="flex justify-between items-center p-3 border-b hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer">
+            <div className="flex gap-3">
+              <User className="w-10 h-10 p-1.5 rounded-full my-bg-secondary" />
+              <h3 className="text-sm font-semibold flex items-center gap-1">New Group</h3>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };

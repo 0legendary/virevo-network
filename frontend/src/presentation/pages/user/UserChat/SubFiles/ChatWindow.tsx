@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Search, MoreVertical, Paperclip, Smile, Mic, Send, Check, User, Camera, File, Users, BarChart2, MessageCircle, PlusCircle, CheckCheck } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
-import { addMessage, setMessages, toggleChatDetails } from '@/infrastructure/redux/slices/chatSlice';
+import { addMessage, setMessages, toggleChatDetails, toggleNewConnection } from '@/infrastructure/redux/slices/chatSlice';
 import { RootState } from '@/infrastructure/redux/store';
 import { useGlobalState } from '@/application/hooks/useGlobalState';
 import { IMessage, MessageType } from '@/domain/types/Chat';
@@ -442,6 +442,8 @@ const ChatWindow = () => {
                 className="flex items-center justify-center gap-2 px-4 py-2 md:px-6 md:py-3 rounded-lg bg-blue-500 text-white hover:bg-blue-600 dark:bg-blue-600 dark:hover:bg-blue-700 transition-all duration-300 text-sm md:text-base"
                 whileHover={{ scale: 1.05, boxShadow: "0 4px 14px rgba(0, 0, 0, 0.1)" }}
                 whileTap={{ scale: 0.95 }}
+                disabled={chatDetails.isNewConnectOpen}
+                onClick={() => dispatch(toggleNewConnection(!chatDetails.isNewConnectOpen))}
               >
                 <PlusCircle className="w-5 h-5 md:w-6 md:h-6" />
                 New Chat

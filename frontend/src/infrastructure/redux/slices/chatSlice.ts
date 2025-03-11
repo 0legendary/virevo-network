@@ -9,6 +9,7 @@ interface ChatState {
     loading: boolean;
     error: string | null;
     isChatDetailsOpen: boolean;
+    isNewConnectOpen: boolean;
 }
 
 const initialState: ChatState = {
@@ -18,6 +19,7 @@ const initialState: ChatState = {
     loading: false,
     error: null,
     isChatDetailsOpen: false,
+    isNewConnectOpen: false,
 };
 
 const chatSlice = createSlice({
@@ -74,6 +76,9 @@ const chatSlice = createSlice({
         toggleChatDetails(state, action: PayloadAction<boolean>) {
             state.isChatDetailsOpen = action.payload;
         },
+        toggleNewConnection(state, action: PayloadAction<boolean>) {
+            state.isNewConnectOpen = action.payload;
+        },
         setMessageSeen(state, action: PayloadAction<{ chatId: String; messageId: string; userId: string }>) {
             // const chatIdStr = action.payload.chatId.toString();
             // const messageIdStr = action.payload.messageId.toString();
@@ -107,6 +112,7 @@ export const {
     setError,
     toggleChatDetails,
     setMessageSeen,
+    toggleNewConnection,
 } = chatSlice.actions;
 
 export default chatSlice.reducer;

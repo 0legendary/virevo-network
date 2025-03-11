@@ -92,13 +92,7 @@ export interface IMessageUpdatePayload {
     message: IMessage;
 }
 
-export interface SideBarUIState {
-    uiState: {
-        isLoading: boolean;
-        isMenuOpen: boolean;
-        activeFilter: string;
-    };
-}
+
 
 export interface IChatPage {
     uiState: {
