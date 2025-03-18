@@ -14,19 +14,23 @@ const app = express();
 app.use(express.json());
 
 const allowedOrigins = [
-    "http://localhost:5173",
-    process.env.CLIENT_URL,
+  "http://localhost:5173",
+  process.env.CLIENT_URL,
 ].filter(Boolean) as string[];
 
 app.use(
-    cors({
-      origin: allowedOrigins,
-      credentials: true,
-      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization"],
-    })
-  );
-  
+  cors({
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-access-token"],
+  })
+);
+app.use((req, res, next) => {
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin-allow-popups");
+  next();
+});
+
 // Connect to MongoDB
 connectDB();
 

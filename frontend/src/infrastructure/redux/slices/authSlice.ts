@@ -58,8 +58,12 @@ const authSlice = createSlice({
       localStorage.removeItem('role');
       localStorage.removeItem('currUserID');
     },
-    toggleTheme: (state) => {
-      state.theme = state.theme === 'light' ? 'dark' : 'light';
+    toggleTheme: (state, action: PayloadAction<string | undefined>) => {
+      if (action.payload) {
+        state.theme = action.payload;
+      } else {
+        state.theme = state.theme === 'light' ? 'dark' : 'light';
+      }
       localStorage.setItem('theme', state.theme);
     },
   },

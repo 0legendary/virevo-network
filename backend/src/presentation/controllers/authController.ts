@@ -38,6 +38,25 @@ export const login = async (req: Request, res: Response) => {
             return
         }
 
+        if (user.googleId && !user.password) {
+            const response: ApiResponse = {
+                success: false,
+                message: "This account is linked with Google. Please log in using Google",
+            };
+            res.status(200).json(response);
+            return;
+        }
+
+        // Ensure password exists before attempting bcrypt comparison
+        if (!user.password) {
+            const response: ApiResponse = {
+                success: false,
+                message: "No password set for this account. Please reset your password or log in using Google.",
+            };
+            res.status(200).json(response);
+            return;
+        }
+
         const isPasswordValid = await bcrypt.compare(password, user.password);
         if (!isPasswordValid) {
             const response: ApiResponse = {
@@ -58,7 +77,7 @@ export const login = async (req: Request, res: Response) => {
         const accessToken = generateAccessToken(payload);
         const refreshToken = generateRefreshToken(payload);
 
-        const { password: _, ...userData } = user.toObject();
+        const { password: _,googleId:__, ...userData } = user.toObject();
         const responseData = {
             userData,
             accessToken
@@ -88,7 +107,58 @@ export const login = async (req: Request, res: Response) => {
         res.status(500).json(response);
     }
 };
+export const googleAuth = async (req: Request, res: Response) => {
+    try {
+        const { userInfo} = req.body.requestData;
+        const { sub: googleId, name, email, picture } = userInfo;
+        
+        let user = await UserModel.findOne({ email });
 
+        if (!user) {
+            user = await UserModel.create({
+                googleId,
+                name,
+                anonymousName: name,
+                email,
+                profilePic: picture
+            });
+        }
+
+        const payload = {
+            _id: user._id,
+            anonymousName: user.anonymousName,
+            email: user.email,
+            role: user.role,
+        };
+
+        const accessToken = generateAccessToken(payload);
+        const refreshToken = generateRefreshToken(payload);
+
+        const { password: _,googleId:__, ...userData } = user.toObject();
+
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+
+        const response: ApiResponse = {
+            success: true,
+            message: "User authenticated successfully",
+            data: {userData,accessToken} 
+        };
+        res.status(201).json(response);
+
+    } catch (error: any) {
+        console.log(error);
+        const response: ApiResponse = {
+            success: false,
+            message: "Google authentication failed",
+        };
+        res.status(500).json(response);
+    }
+};
 
 export const signup = async (req: Request, res: Response) => {
     try {
@@ -124,7 +194,7 @@ export const signup = async (req: Request, res: Response) => {
         const accessToken = generateAccessToken(payload);
         const refreshToken = generateRefreshToken(payload);
 
-        const { password: _, ...userData } = newUser.toObject();
+        const { password: _,googleId:__, ...userData } = newUser.toObject();
         const responseData = {
             userData,
             accessToken
