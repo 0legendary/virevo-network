@@ -6,9 +6,10 @@ import { sendVerificationEmail } from "../../utils/emailService";
 import bcrypt from "bcrypt";
 import { generateAccessToken, generateRefreshToken, TokenPayload, verifyRefreshToken } from "../../application/services/jwtService";
 
-
 export const refreshToken = async (req: Request, res: Response) => {
-    const refreshToken = req.cookies?.refreshToken;
+    const refreshToken = req.cookies.refreshToken;
+    console.log(refreshToken);
+    
     if (!refreshToken) {
         res.status(401).json({ success: false, message: "Refresh token missing" });
         return
@@ -138,9 +139,10 @@ export const googleAuth = async (req: Request, res: Response) => {
 
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
+            // secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
             maxAge: 7 * 24 * 60 * 60 * 1000,
+            domain: 'localhost'
         });
 
         const response: ApiResponse = {

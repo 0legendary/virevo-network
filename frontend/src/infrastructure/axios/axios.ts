@@ -21,7 +21,7 @@ apiClient.interceptors.request.use((config) => {
 const refreshAccessToken = async () => {
   try {
     const response = await axios.post(
-      `${import.meta.env.VITE_API_URL}/refresh-token`,
+      `${import.meta.env.VITE_API_URL}/auth/refresh-token`,
       {},
       { withCredentials: true }
     );

@@ -16,7 +16,12 @@ export interface SideBarUIState {
     isLoading: boolean;
     isMenuOpen: boolean;
     activeFilter: string;
-  };
+    hasMore: boolean;
+    currentPage: number;
+  },
+  data: {
+    users: { name: string }[]
+  }
 }
 
 const Sidebar = () => {
@@ -24,13 +29,20 @@ const Sidebar = () => {
   const currUser = useSelector((state: RootState) => state.auth.currUser);
   const dispatch = useDispatch()
   const { request: fetchChatsAndMessages } = useApi();
+  const { request: fetchUsers } = useApi();
+
 
   const { state, updateState } = useGlobalState<SideBarUIState>({
     uiState: {
       isLoading: false,
       isMenuOpen: false,
       activeFilter: "All",
+      hasMore: true,
+      currentPage: 0,
     },
+    data: {
+      users: []
+    }
   });
 
   const handleFetchChatsAndMessages = async () => {
@@ -140,8 +152,42 @@ const Sidebar = () => {
       console.error("Error fetching chats and messages:", error.message);
     }
   }
+  const handleFetchUsers = async (page = 1, limit = 15) => {
+    try {
+      updateState('uiState', { isLoading: true });
+
+      const response = await fetchUsers('get', `/chat/all-users?userID=${currUser?._id}&limit=${limit}&page=${page}`);
+
+      const { success, message, data } = response as ApiResponse;
+      if (!success) throw new Error(message);
+      console.log(data);
+      
+      updateState('data', {
+        users: page === 1 ? data : [...state.data.users, ...data.users],
+      });
+
+      updateState('uiState', { currentPage: page, hasMore: data.hasMore });
+
+    } catch (error: any) {
+      console.error("Error fetching chats and messages:", error.message);
+    } finally {
+      updateState('uiState', { isLoading: false });
+    }
+  };
+
+  // const handleScroll = () => {
+  //   if (!state.uiState.isLoading && state.uiState.hasMore) {
+  //     handleFetchUsers(state.uiState.currentPage + 1);
+  //   }
+  // };
+
+  // useEffect(() => {
+  //   window.addEventListener("scroll", handleScroll);
+  //   return () => window.removeEventListener("scroll", handleScroll);
+  // }, [state.uiState.currentPage, state.uiState.hasMore]);
 
   useEffect(() => {
+    handleFetchUsers(state.uiState.currentPage + 1);
     handleFetchChatsAndMessages()
   }, [])
 
@@ -203,17 +249,17 @@ const Sidebar = () => {
 
       {/* Filter Options */}
       {!chatData.isNewConnectOpen && (
-      <div className="flex gap-2 px-3">
-        {["All", "Unread", "Fav", "Groups"].map((filter) => (
-          <button
-            key={filter}
-            className={`px-3 py-1 text-sm rounded-lg cursor-pointer hover:bg-gray-400 my-text ${state.uiState.activeFilter === filter ? "dark:bg-blue-950 bg-gray-400" : "bg-gray-200 dark:bg-gray-700"}`}
-            onClick={() => updateState("uiState", { activeFilter: filter })}
-          >
-            {filter}
-          </button>
-        ))}
-      </div>
+        <div className="flex gap-2 px-3">
+          {["All", "Unread", "Fav", "Groups"].map((filter) => (
+            <button
+              key={filter}
+              className={`px-3 py-1 text-sm rounded-lg cursor-pointer hover:bg-gray-400 my-text ${state.uiState.activeFilter === filter ? "dark:bg-blue-950 bg-gray-400" : "bg-gray-200 dark:bg-gray-700"}`}
+              onClick={() => updateState("uiState", { activeFilter: filter })}
+            >
+              {filter}
+            </button>
+          ))}
+        </div>
       )}
 
       {/* Chat List */}

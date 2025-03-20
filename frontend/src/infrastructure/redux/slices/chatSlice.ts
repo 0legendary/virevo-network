@@ -1,6 +1,5 @@
 import { IChat, IMessage } from '@/domain/types/Chat';
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import mongoose from 'mongoose';
 
 interface ChatState {
     chats: IChat[];
