@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useDispatch, useSelector } from 'react-redux';
-import { toggleTheme } from '../../../../infrastructure/redux/slices/authSlice';
+import { logout, toggleTheme } from '../../../../infrastructure/redux/slices/authSlice';
 import { RootState } from '../../../../infrastructure/redux/store';
-import { Search, Bell, Moon, Sun, Menu, X, User } from 'lucide-react';
+import { Search, Bell, Moon, Sun, Menu, X, User, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 function UserHeader() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+
   const theme = useSelector((state: RootState) => state.auth.theme);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -38,13 +41,18 @@ function UserHeader() {
 
   const handleToggleTheme = () => {
     dispatch(toggleTheme());
-    // Apply theme to document for immediate visual feedback
     document.documentElement.setAttribute('data-theme', theme === 'light' ? 'dark' : 'light');
   };
+  const handleLogout = () => {
+    dispatch(logout());
+    dispatch(toggleTheme('light'))
+    navigate('/auth');
+  };
+
 
   return (
     <motion.header
-      className="fixed top-0 left-0 right-0 z-50 bg-card-background shadow-md transition-colors duration-300"
+      className="w-full z-10 right-0 bg-card-background shadow-md transition-colors duration-300"
       style={{
         backgroundColor: 'var(--card-background)',
         boxShadow: 'var(--box-shadow)',
@@ -161,6 +169,17 @@ function UserHeader() {
               }}
             >
               <User size={20} style={{ color: 'var(--text-secondary)' }} />
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              className="flex gap-2 relative p-2 rounded-full transition-all duration-300"
+              style={{
+                backgroundColor: 'rgba(75, 107, 253, 0.1)'
+              }}
+              onClick={handleLogout}
+            >
+              <LogOut size={20} style={{ color: 'var(--text-secondary)' }} />
             </motion.button>
           </div>
 

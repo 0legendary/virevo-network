@@ -9,6 +9,7 @@ export enum UserRole {
 
 export interface IUser extends Document {
   name: string;
+  googleId: string;
   anonymousName: string;
   email: string;
   password: string;
@@ -39,9 +40,10 @@ export interface IUser extends Document {
 const UserSchema = new Schema<IUser>(
   {
     name: { type: String },
+    googleId: { type: String },
     anonymousName: { type: String, required: true, unique: true },
     email: { type: String, unique: true, required: true },
-    password: { type: String, required: true },
+    password: { type: String },
     role: { type: String, enum: Object.values(UserRole), default: UserRole.USER },
     isAnonymous: { type: Boolean, default: true },
     profilePic: { type: String },
