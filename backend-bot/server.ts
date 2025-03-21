@@ -18,4 +18,7 @@ setInterval(() => {
 app.use(cors({ origin: "*" }));
 app.use(express.json());
 connectDB();
+app.get('/health', (req, res) => {
+    res.status(200).send('Server is healthy');
+});
 app.listen(PORT, '0.0.0.0', () => console.log(`Bot server running on port ${PORT}`));
