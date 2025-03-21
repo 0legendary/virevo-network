@@ -8,6 +8,7 @@
   /* Light Theme Base Colors */
   --primary: #4B6BFD;
   --primary-hover: #3451E0;
+  --dropdown-hover: #4B6BFD;
   --secondary: #FF9F76;
   --secondary-hover: #FF8A5B;
 
@@ -15,6 +16,7 @@
   --text-primary: #2C3E50;
   --text-secondary: #64748B;
   --background: #F8F9FC;
+  --secondary-background: #cdd4e3;
   --card-background: #FFFFFF;
   --border: #E2E8F0;
 
@@ -85,6 +87,7 @@
   --text-primary: #E2E8F0;
   --text-secondary: #94A3B8;
   --background: #0F172A;
+  --secondary-background: #1E293B;
   --card-background: #1E293B;
   --border: #334155;
 
@@ -100,13 +103,16 @@
 
 /* Base Styles */
 body {
+  /* overflow: hidden; */
   font-family: var(--font-body);
   font-size: var(--font-size-md);
   color: var(--text-primary);
+  border-color: var(--border);
   background: var(--background);
   background-image: var(--gradient-primary);
   min-height: 100vh;
 }
+
 
 /* Card Styles */
 .card {
@@ -279,6 +285,40 @@ body {
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* Global Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-secondary);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-hover);
+}
+
+/* Dark Mode Scrollbar */
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: var(--secondary-background);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: var(--text-secondary);
+}
+
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-hover);
+}
+
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -287,3 +327,49 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* Backgrounds */
+.my-bg { background-color: var(--background); }
+.my-bg-secondary { background-color: var(--secondary-background); }
+.my-bg-card { background-color: var(--card-background); }
+
+/* Text Colors */
+.my-text { color: var(--text-primary); }
+.my-text-secondary { color: var(--text-secondary); }
+
+/* Borders */
+.my-border { border-color: var(--border); }
+
+/* Shadows */
+.my-shadow-box { box-shadow: var(--box-shadow); }
+.my-shadow-input { box-shadow: var(--input-shadow); }
+
+/* Rounded Corners */
+.my-rounded-sm { border-radius: var(--border-radius-sm); }
+.my-rounded-md { border-radius: var(--border-radius-md); }
+.my-rounded-lg { border-radius: var(--border-radius-lg); }
+
+/* Padding */
+.my-p-sm { padding: 4px; }
+.my-p-md { padding: 8px; }
+.my-p-lg { padding: 16px; }
+.my-p-xl { padding: 32px; }
+
+/* Margin */
+.my-m-sm { margin: 4px; }
+.my-m-md { margin: 8px; }
+.my-m-lg { margin: 16px; }
+.my-m-xl { margin: 32px; }
+
+/* Font Sizes */
+.my-text-sm { font-size: var(--font-size-sm); }
+.my-text-md { font-size: var(--font-size-md); }
+.my-text-lg { font-size: var(--font-size-lg); }
+
+/* Gradients */
+.my-bg-gradient-primary { background-image: var(--gradient-primary); }
+.my-bg-gradient-card { background-image: var(--gradient-card); }
+.my-bg-gradient-accent { background-image: var(--gradient-accent); }
+
+/* Cursors */
+.my-cursor-pointer { cursor: pointer; }

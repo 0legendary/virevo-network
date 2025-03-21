@@ -21,7 +21,7 @@ apiClient.interceptors.request.use((config) => {
 const refreshAccessToken = async () => {
   try {
     const response = await axios.post(
-      `${import.meta.env.VITE_API_URL}/refresh-token`,
+      `${import.meta.env.VITE_API_URL}/auth/refresh-token`,
       {},
       { withCredentials: true }
     );
@@ -33,8 +33,8 @@ const refreshAccessToken = async () => {
     }
   } catch (error) {
     console.error("Failed to refresh token", error);
-    localStorage.removeItem("token");
-    window.location.href = "/auth";
+    // localStorage.removeItem("token");
+    // window.location.href = "/auth";
     return null;
   }
 };

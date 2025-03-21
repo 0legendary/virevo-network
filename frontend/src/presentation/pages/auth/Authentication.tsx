@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaGoogle, FaGithub, FaEye, FaEyeSlash, FaCheck } from 'react-icons/fa';
+import { FaGithub, FaEye, FaEyeSlash, FaCheck } from 'react-icons/fa';
 import { useGlobalState } from '../../../application/hooks/useGlobalState';
 import { OtpInputProps, AuthState, AuthMode, Ierrors, AuthResponse } from '../../../domain/types/Authentication';
 import { containerVariants, itemVariants } from '../../../constants/design';
@@ -9,8 +9,11 @@ import { useApi } from '../../../application/hooks/useApi';
 import { ApiResponse } from '../../../domain/models/requestModel';
 import { ErrorMessage } from '../../components/ErrorMessage';
 import { useNavigate } from 'react-router-dom';
-import {useDispatch} from "react-redux";
+import { useDispatch } from "react-redux";
 import { login } from '../../../infrastructure/redux/slices/authSlice';
+import GoogleAuth from './Google/GoogleAuth';
+import { GoogleOAuthProvider } from '@react-oauth/google';
+import AuthSuccessMessage from './AuthSuccessMessage';
 const OtpInput: React.FC<OtpInputProps> = ({ value, onChange }) => {
   const inputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
 
@@ -236,7 +239,7 @@ const Authentication: React.FC = () => {
         updateState("uiState", { error: { signIn: message } });
         return;
       }
-      updateState("uiState", { isVerified: true, signInStep: 4 });
+      updateState("uiState", { isVerified: true, signInStep: 5 });
       setTimeout(() => {
         updateState("uiState", { error: {} });
         handleAuthSuccess(data)
@@ -480,6 +483,8 @@ const Authentication: React.FC = () => {
                       </label>
                       <input
                         type="email"
+                        name="email"
+                        autoComplete="email"
                         value={state.formState.email}
                         onChange={(e) => {
                           updateState("formState", { email: e.target.value });
@@ -507,6 +512,8 @@ const Authentication: React.FC = () => {
                       </label>
                       <div className="relative">
                         <input
+                          name="password"
+                          autoComplete="current-password"
                           type={state.uiState.showPassword ? "text" : "password"}
                           value={state.formState.password}
                           onChange={(e) => {
@@ -533,7 +540,7 @@ const Authentication: React.FC = () => {
                     </motion.div>
 
                     <motion.div variants={itemVariants} className="text-right mb-6">
-                      <motion.button onClick={handleForgotPassword} className="text-sm hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-450">
+                      <motion.button onClick={handleForgotPassword} className="text-sm hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-450 cursor-pointer">
                         Forgot password?
                       </motion.button>
                     </motion.div>
@@ -692,59 +699,16 @@ const Authentication: React.FC = () => {
                 )}
 
                 {state.uiState.signInStep === 4 && (
-                  <motion.div
-                    key="step4"
-                    initial="hidden"
-                    animate="visible"
-                    exit="exit"
-                    variants={containerVariants}
-                    className="text-center py-8"
-                  >
-                    {/* Success Icon Container */}
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{
-                        type: "spring",
-                        stiffness: 260,
-                        damping: 20,
-                        delay: 0.2
-                      }}
-                      className="w-24 h-24 bg-green-200 rounded-full mx-auto flex items-center justify-center mb-6 shadow-md"
-                    >
-                      <FaCheck className="text-green-700 text-4xl" />
-                    </motion.div>
-
-                    {/* Success Message */}
-                    <motion.h3
-                      variants={itemVariants}
-                      className="text-2xl font-bold text-gray-900 mb-2"
-                    >
-                      Password Updated Successfully!
-                    </motion.h3>
-
-                    <motion.p
-                      variants={itemVariants}
-                      className="text-gray-700 mb-6 leading-relaxed"
-                    >
-                      Redirecting you to the signIn page...
-                    </motion.p>
-
-                    {/* Progress Bar */}
-                    <motion.div variants={itemVariants} className="w-full max-w-xs mx-auto">
-                      <div className="h-1 w-full bg-gray-300 rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: "100%" }}
-                          transition={{ duration: 3 }}
-                          className="h-full bg-indigo-500"
-                        />
-                      </div>
-                    </motion.div>
-                  </motion.div>
+                  <AuthSuccessMessage authType={"updatePassword"} />
+                )}
+                {state.uiState.signInStep === 5 && (
+                  <AuthSuccessMessage authType={"signin"} />
+                )}
+                {state.uiState.signInStep === 6 && (
+                  <AuthSuccessMessage authType={"googleAuth"} />
                 )}
 
-                {state.uiState.signInStep !== 4 && (
+                {state.uiState.signInStep !== 4 && state.uiState.signInStep !== 5 && (
                   <motion.div variants={itemVariants} className="mt-8">
                     <div className="relative flex items-center">
                       <div className="flex-grow border-t border-gray-300 dark:border-gray-700"></div>
@@ -753,7 +717,9 @@ const Authentication: React.FC = () => {
                     </div>
 
                     <div className="grid grid-cols-2 gap-3 mt-4">
-                      <SocialButton icon={<FaGoogle className="text-red-500" />} label="Google" />
+                      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+                        <GoogleAuth updateState={updateState} handleAuthSuccess={handleAuthSuccess} />
+                      </GoogleOAuthProvider>
                       <SocialButton icon={<FaGithub className="text-gray-800 " />} label="GitHub" />
                       {/* <SocialButton icon={<FaFacebook className="text-blue-600" />} label="Facebook" /> */}
                     </div>
@@ -948,57 +914,10 @@ const Authentication: React.FC = () => {
                   )}
 
                   {state.uiState.step === 4 && (
-                    <motion.div
-                      key="step4"
-                      initial="hidden"
-                      animate="visible"
-                      exit="exit"
-                      variants={containerVariants}
-                      className="text-center py-8"
-                    >
-                      {/* Success Icon Container */}
-                      <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{
-                          type: "spring",
-                          stiffness: 260,
-                          damping: 20,
-                          delay: 0.2
-                        }}
-                        className="w-24 h-24 bg-green-200 rounded-full mx-auto flex items-center justify-center mb-6 shadow-md"
-                      >
-                        <FaCheck className="text-green-700 text-4xl" />
-                      </motion.div>
-
-                      {/* Success Message */}
-                      <motion.h3
-                        variants={itemVariants}
-                        className="text-2xl font-bold text-gray-900 mb-2"
-                      >
-                        Account Created Successfully!
-                      </motion.h3>
-
-                      <motion.p
-                        variants={itemVariants}
-                        className="text-gray-700 mb-6 leading-relaxed"
-                      >
-                        Welcome <span className="font-semibold text-gray-900">{state.formState.anonymousName}</span>! Your account has been created.
-                        <br />Redirecting you to the homepage...
-                      </motion.p>
-
-                      {/* Progress Bar */}
-                      <motion.div variants={itemVariants} className="w-full max-w-xs mx-auto">
-                        <div className="h-1 w-full bg-gray-300 rounded-full overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: "100%" }}
-                            transition={{ duration: 3 }}
-                            className="h-full bg-indigo-500"
-                          />
-                        </div>
-                      </motion.div>
-                    </motion.div>
+                    <AuthSuccessMessage authType={"signup"} />
+                  )}
+                  {state.uiState.step === 5 && (
+                    <AuthSuccessMessage authType={"googleAuth"} />
                   )}
 
                 </AnimatePresence>
@@ -1045,7 +964,9 @@ const Authentication: React.FC = () => {
                   </div>
 
                   <div className="grid grid-cols-2 gap-3 mt-4">
-                    <SocialButton icon={<FaGoogle className="text-red-500" />} label="Google" />
+                    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+                      <GoogleAuth updateState={updateState} handleAuthSuccess={handleAuthSuccess} />
+                    </GoogleOAuthProvider>
                     <SocialButton icon={<FaGithub className="text-gray-800 " />} label="GitHub" />
                     {/* <SocialButton icon={<FaFacebook className="text-blue-600" />} label="Facebook" /> */}
                   </div>
