@@ -18,7 +18,7 @@ interface SaveResponseData {
     answer: string;
 }
 
-export const getAIResponse = async (userMessage: string): Promise<string> => {
+export const getAIResponse = async (userMessage: string, context?: string): Promise<string> => {
     try {
         // Handle goodbye messages
         const endPhrases = ["bye", "goodbye", "see you", "talk later", "thanks", "thank you", "take care", "peace out", "catch you later", "adios", "adieu", "ciao", "later"];
@@ -28,40 +28,51 @@ export const getAIResponse = async (userMessage: string): Promise<string> => {
             return goodbyeMessages[randomIndex];
         }
 
+        let messages: Groq.Chat.Completions.ChatCompletionMessageParam[] = [
+            {
+                role: "system",
+                content: `You are an enthusiastic and insightful learning coach focused on helping users maximize their daily progress, particularly in creative fields like animation and game development. Your primary goal is to gather information about their daily activities and learning experiences.
+        
+                - **Proactive Questioning:** Your main objective is to ask engaging and relevant questions to understand what the user has accomplished or learned.
+                - **Dynamic Responses:** Avoid repeating the same questions. Instead, adapt your responses to the user's input and the flow of the conversation.
+                - **Creative Prompts:** Use humor, emojis, and engaging language to keep the conversation lively and fun. 😄
+                - **Tool Specific Inquiries:** If the user mentions tools like Blender, DaVinci Resolve, Unreal Engine, or NVIDIA tools, ask specific follow-up questions related to their use (e.g., "Did you focus on modeling, animation, or texturing in Blender today? 🎨").
+                - **Learning Focus:** If the user mentions learning something new without specifying, ask "What was the most exciting thing you learned today? 🤔".
+                - **Gentle Redirection:** If the user deviates from the topic, gently steer them back by relating their current topic to animation or game development. Use creative transitions like, "That's interesting! Speaking of creativity, did you work on any projects today?".
+                - **Encouragement and Engagement:** If the user reports no progress, offer encouragement and suggest ways to get started. "No worries! Tomorrow is another chance to create something amazing! 🚀".
+                - **Concise Responses:** Keep responses under 25 words for quick, snappy conversations.
+                - **Friendly Farewell:** If the conversation is ending, offer a friendly goodbye and encouragement.
+                - **Situational Awareness:** Avoid repeating questions they've already answered. Adapt your responses to the user's current context.
+                - **No Question Dodging:** If the user avoids answering a question, playfully call them out: "Dodging my question? You're being mysterious today! 🕵️‍♂️".
+                - **Topic Shifting:** If the user is disengaged or unresponsive, change the topic with a question like, "Did anything exciting happen today outside of work? 🎉".`
+            }
+        ];
+
+        if (context && context.trim()) {
+            messages.push({
+                role: "user",
+                content: `Here’s our last conversation for context:\n\n${context}`
+            });
+        }
+
+        messages.push({ role: "user", content: userMessage });
+
         const response = await groq.chat.completions.create({
             model: "llama-3.3-70b-versatile",
-            messages: [
-                {
-                    role: "system",
-                    content: `You are a friendly, engaging assistant that helps users reflect on their daily progress. 
-                    - Make responses natural, fun, and engaging. Use humor and emoji to keep things lively! 😄  
-                    - If they mention Blender, ask things like Modeling, animation, or texturing etc..? 🎨"  
-                    - If they mention DaVinci, ask things like Editing, color grading, or transitions etc..? 🎬"  
-                    - If they say they learned something but don’t specify, ask question like What was the coolest thing you learned today? 🤔"  
-                    - If they did nothing, say: "No worries! Tomorrow is another shot at awesomeness! 🚀"  
-                    - If they dodge the question, put jokes like "Avoiding my question again? You’re a mystery today! 🕵️‍♂️"  
-                    - If they already answered, don’t repeat the same question.  
-                    - If disengaged, shift topics: "Anything exciting happen today besides work? 🎉"  
-                    - Keep responses under 25 words for quick, snappy convos.  
-                    - If the conversation is ending, say a friendly goodbye with encouragement!`
-                },
-                { role: "user", content: userMessage },
-            ],
+            messages: messages,
             response_format: { type: "text" },
             temperature: 0.8,
             max_tokens: 50,
         });
 
         let aiResponse = response.choices?.[0]?.message?.content?.trim() || "I'm unable to process this right now. 😕";
-
-
         return aiResponse;
+
     } catch (error) {
-        console.error("AI API Error:", error);
+        // console.error("AI API Error:", error);
         return "Oops! Something went wrong. 🤖💥 Try again in a bit!";
     }
 };
-
 
 interface DailyResponse {
     date: string;
@@ -84,21 +95,37 @@ export const evaluateUserPerformance = async (
             d.date >= startDate && d.date <= endDate
         );
 
-        if (filteredResponses.length === 0) return "No responses found in this date range. 📭";
+        // If no responses exist in the range
+        if (filteredResponses.length === 0) {
+            return `📭 *No responses found between ${startDate} and ${endDate}.*\n\nTry engaging more in conversations! 😊`;
+        }
+
+        // If user has only one recorded day
+        if (filteredResponses.length === 1) {
+            return `📊 *Performance Evaluation* 📊\n\n🗓️ *Date Range:* ${startDate} to ${endDate}\n\n🔹 *Looks like you've just started!* 🚀\nIt's too soon to judge, but keep up the momentum! 💪`;
+        }
 
         // Organize responses in date order
         let userMessage = `📊 *Performance Evaluation* 📊\n\n🗓️ *Date Range:* ${startDate} to ${endDate}\n\n`;
 
         let missedDays = 0;
+        let totalResponses = 0;
         filteredResponses.forEach(day => {
             userMessage += `📅 *Date:* ${day.date}\n`;
             day.responses.forEach(r => {
                 userMessage += `❓ *${r.question}*\n➡️ ${r.answer || "No response"}\n\n`;
             });
 
+            totalResponses += day.responses.length;
+
             // Count missed days
             if (day.responses.some(r => r.answer === "No response")) missedDays++;
         });
+
+        // If the user has very few responses
+        if (totalResponses < 3) {
+            return `📊 *Performance Evaluation* 📊\n\n🗓️ *Date Range:* ${startDate} to ${endDate}\n\n🔹 *Not much data yet!* 🧐\nLet's have more conversations to get meaningful feedback! 🚀`;
+        }
 
         // Send request to Groq API
         const response = await groq.chat.completions.create({
@@ -118,7 +145,7 @@ export const evaluateUserPerformance = async (
             ],
             response_format: { type: "text" },
             temperature: 0.8,
-            max_tokens: 150,
+            max_tokens: 200,
         });
 
         let aiResponse = response.choices?.[0]?.message?.content?.trim() || "I'm unable to process this right now. 😕";
@@ -128,7 +155,6 @@ export const evaluateUserPerformance = async (
 
         return formattedResponse;
     } catch (error) {
-        console.error("Error evaluating user performance:", error);
         return "There was an error processing the request. 🚨";
     }
 };
@@ -179,10 +205,32 @@ const saveResponse = async (data: SaveResponseData) => {
 export const sendDailyCheckIn = async () => {
     const users = await TeleUser.find();
 
+    const dailyQuestions = [
+        "Hey there! What did you learn today? 🤔",
+        "Yo! Any cool skills or knowledge gained today? 🚀",
+        "What’s one new thing you explored today? 🧠✨",
+        "Tell me something interesting you discovered today! 👀",
+        "Learning anything exciting today? Spill the beans! 😃",
+        "How was your day? Did you pick up a new skill? 🎓",
+        "What’s a fun fact or lesson you came across today? 🔥",
+        "Did you try something new today? Share your experience! 🤩",
+        "What’s one takeaway from today that made you smarter? 📚",
+        "If today was a class, what would the lesson be? 🎯",
+        "What’s a small win or progress you made today? 🏆",
+        "Anything mind-blowing you learned today? 💥",
+        "What’s a cool insight or idea you came across today? 💡",
+        "If you could teach me one thing from today, what would it be? 🎤",
+        "Looking back at today, what’s something valuable you learned? 🔎"
+    ];
+
     for (const user of users) {
-        const firstQuestion = "Hello! What did you learn today?";
+        // Pick a random question
+        const firstQuestion = dailyQuestions[Math.floor(Math.random() * dailyQuestions.length)];
+
+        // Send message
         bot.sendMessage(user.userId, firstQuestion);
 
+        // Save question in the database
         await saveResponse({
             chatId: user.chatId,
             userId: user.userId,
@@ -194,6 +242,7 @@ export const sendDailyCheckIn = async () => {
         });
     }
 };
+
 
 
 // Schedule message every day at 8:00 PM (UTC)
@@ -209,10 +258,9 @@ bot.on("message", async (msg) => {
         const groupId = chatType === "group" ? chatId : undefined;
         const userResponse = msg.text?.trim();
 
-        if (!userId || !userResponse) return;
+        if (!userId || !userResponse) return;  // Ignore empty messages
 
-        if (chatType === "group") return;
-        // console.log(`Received message from ${name} (${userId}): ${userResponse}`);
+        if (chatType === "group") return;  // Ignore group messages
 
         let user = await TeleUser.findOne({ userId });
 
@@ -221,56 +269,76 @@ bot.on("message", async (msg) => {
             user = await TeleUser.create({
                 userId, chatId, name, chatType, groupId, dailyResponses: [],
             });
-            // console.log(`Created new user: ${name} (${userId})`);
 
-            const firstQuestion = "Hello! What did you learn today?";
-            bot.sendMessage(chatId, firstQuestion);
+            bot.sendMessage(chatId, `Hey ${name}! 👋 Welcome aboard!`);
 
-            await saveResponse({ chatId, userId, name, chatType, groupId, question: firstQuestion, answer: "" });
+            setTimeout(() => {
+                bot.sendMessage(chatId, "I’m here to help you track your daily learnings. 📚💡");
+            }, 1000);
+
+            setTimeout(() => {
+                bot.sendMessage(chatId, "So, tell me... what did you learn today? 🤔");
+            }, 2000);
+
+            await saveResponse({ chatId, userId, name, chatType, groupId, question: "What did you learn today?", answer: "" });
             return;
         }
 
-        // ✅ Support "perf 10-3 to 20-4" (March 10 to April 20)
+
+        // ✅ Handle "perf 10-3 to 20-4"
         const performanceRegex = /^perf\s+(\d{1,2})(?:-(\d{1,2}))?(?:\s+to\s+(\d{1,2})(?:-(\d{1,2}))?)?$/i;
         const match = userResponse.match(performanceRegex);
 
         if (match) {
-            const currentDate = new Date();
-            const year = currentDate.getFullYear();
+            try {
+                const currentDate = new Date();
+                const year = currentDate.getFullYear();
+                const appStartDate = new Date("2025-03-21"); // Application start date
 
-            let startDay = match[1].padStart(2, "0"); // Day (e.g., "10")
-            let startMonth = match[2] ? match[2].padStart(2, "0") : (currentDate.getMonth() + 1).toString().padStart(2, "0"); // Month
+                let startDay = match[1].padStart(2, "0");
+                let startMonth = match[2] ? match[2].padStart(2, "0") : (currentDate.getMonth() + 1).toString().padStart(2, "0");
 
-            let endDay = match[3]?.padStart(2, "0") || startDay; // End day (default = startDay)
-            let endMonth = match[4] ? match[4].padStart(2, "0") : startMonth; // End month (default = start month)
+                let endDay = match[3]?.padStart(2, "0") || startDay;
+                let endMonth = match[4] ? match[4].padStart(2, "0") : startMonth;
 
-            const startDate = `${year}-${startMonth}-${startDay}`;
-            let endDate = `${year}-${endMonth}-${endDay}`;
+                const startDate = `${year}-${startMonth}-${startDay}`;
+                let endDate = `${year}-${endMonth}-${endDay}`;
 
-            // Convert to Date objects for validation
-            const start = new Date(startDate);
-            const end = new Date(endDate);
+                let start = new Date(startDate);
+                const end = new Date(endDate);
 
-            if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-                bot.sendMessage(chatId, "⚠️ Invalid date! Use `perf DD-MM to DD-MM` (Example: `perf 10-3 to 20-4`)");
-                return;
+                if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                    bot.sendMessage(chatId, "⚠️ Invalid date format! Use `perf DD-MM to DD-MM` (Example: `perf 10-3 to 20-4`).");
+                    return;
+                }
+
+                // Ensure that requests don't go before the application start date
+                if (start < appStartDate) {
+                    bot.sendMessage(chatId, `⚠️ Sorry, I can only fetch performance data from *${appStartDate.toISOString().split("T")[0]}* onwards.`);
+                    return;
+                }
+
+                // Adjust start date if no range is given (last 7 days, but not before app start date)
+                if (!match[3]) {
+                    let tempStart = new Date(start);
+                    tempStart.setDate(tempStart.getDate() - 6);
+
+                    // Ensure we do not fetch before app start date
+                    start = tempStart < appStartDate ? appStartDate : tempStart;
+                }
+
+                const formattedStart = start.toISOString().split("T")[0];
+                const formattedEnd = end.toISOString().split("T")[0];
+
+                bot.sendMessage(chatId, `⏳ Fetching performance from *${formattedStart}* to *${formattedEnd}*...`);
+
+                const performanceResult = await evaluateUserPerformance(userId, formattedStart, formattedEnd);
+                bot.sendMessage(chatId, performanceResult);
+            } catch (err) {
+                bot.sendMessage(chatId, "⚠️ Sorry, I couldn't fetch performance data right now. Please try again later.");
             }
-
-            // If only one date is given, fetch last 7 days
-            if (!match[3]) {
-                start.setDate(start.getDate() - 6);
-            }
-
-            const formattedStart = start.toISOString().split("T")[0];
-            const formattedEnd = end.toISOString().split("T")[0];
-
-            bot.sendMessage(chatId, `⏳ Fetching performance from *${formattedStart}* to *${formattedEnd}*...`);
-
-            const performanceResult = await evaluateUserPerformance(userId, formattedStart, formattedEnd);
-            bot.sendMessage(chatId, performanceResult);
             return;
         }
-
 
 
         const today = new Date().toISOString().split("T")[0];
@@ -283,29 +351,43 @@ bot.on("message", async (msg) => {
 
         const lastResponse = dailyResponse.responses.length > 0 ? dailyResponse.responses[dailyResponse.responses.length - 1] : null;
 
-        // If the user already answered the last question, fetch a new AI-generated question
-        let followUpQuestion = "";
-        if (lastResponse && lastResponse.answer.trim() !== "") {
-            followUpQuestion = await getAIResponse(userResponse);
+        // Fetch last conversation history
+        let lastConversations: { question: string; answer: string }[] = [];
+        const responses = dailyResponse.responses.filter(r => r.answer.trim() !== "");
 
-            // Prevent asking the same question again
-            if (dailyResponse.responses.some(r => r.question === followUpQuestion)) {
-                // console.log("Skipping duplicate question:", followUpQuestion);
-                return;
-            }
-            bot.sendMessage(chatId, followUpQuestion);
-            // console.log(`Sent response to ${name} (${userId}): ${followUpQuestion}`);
+        if (responses.length > 0) lastConversations.push(responses[responses.length - 1]);
+        if (responses.length > 1) lastConversations.push(responses[responses.length - 2]);
 
-            await saveResponse({ chatId, userId, name, chatType, groupId, question: followUpQuestion, answer: "" });
+        let context = lastConversations.map(conv => `Q: ${conv.question}\nA: ${conv.answer}`).join("\n\n");
+
+        // ✅ Ensure response is always sent
+        let followUpQuestion = "Hmm... I'm not sure what to say. Can you clarify? 🤔";
+
+        try {
+            followUpQuestion = await getAIResponse(userResponse, context);
+        } catch (err) {
+            // console.error("AI Response Error:", err);
+            followUpQuestion = "🚧 Our AI system is currently experiencing issues. Please try again later!";
         }
 
-        // Save the user’s response
-        await saveResponse({ chatId, userId, name, chatType, groupId, question: lastResponse?.question || "What did you learn today?", answer: userResponse });
+        bot.sendMessage(chatId, followUpQuestion);
+
+        // Save response
+        await saveResponse({
+            chatId,
+            userId,
+            name,
+            chatType,
+            groupId,
+            question: lastResponse?.question || "What did you learn today?",
+            answer: userResponse,
+        });
 
     } catch (error) {
-        // console.error("Error handling message:", error);
+        bot.sendMessage(msg.chat.id, "⚠️ Oops! Something went wrong. Please try again later.");
     }
 });
+
 
 cron.schedule("29 18 * * *", async () => {  // Runs at 11:59 PM IST
     try {
@@ -313,7 +395,7 @@ cron.schedule("29 18 * * *", async () => {  // Runs at 11:59 PM IST
 
         const users = await TeleUser.find({
             "dailyResponses.date": today,
-            "dailyResponses.responses.answer": { $exists: true, $eq: "" } // Checks if answer is empty
+            "dailyResponses.responses.answer": { $exists: true, $eq: "" }
         });
 
         // console.log(`Checking for missed responses. Users to update: ${users.length}`);

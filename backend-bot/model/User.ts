@@ -1,3 +1,4 @@
+
 import mongoose, { Schema, Document } from 'mongoose';
 
 // Interface for the Response document
@@ -21,6 +22,7 @@ interface IUser extends Document {
   chatType: 'private' | 'group';
   groupId?: number;
   dailyResponses: IDailyResponse[];
+  conversation: IResponse[];
 }
 
 // Response Schema
