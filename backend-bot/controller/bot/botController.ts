@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import TelegramBot from 'node-telegram-bot-api';
 import cron from 'node-cron';
 dotenv.config()
+import axios from "axios"; 
 
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
@@ -12,7 +13,33 @@ const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN as string, { webHook:
 // Set webhook for Telegram updates
 const WEBHOOK_URL = `${process.env.BACKEND_URL}/webhook`;
 
-bot.setWebHook(WEBHOOK_URL);
+// Function to check and update webhook
+const updateWebhook = async () => {
+    try {
+        // Step 1: Check existing webhook
+        const { data } = await axios.get(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/getWebhookInfo`);
+
+        if (data.ok && data.result.url !== WEBHOOK_URL) {
+            // Step 2: Delete old webhook
+            await axios.post(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/deleteWebhook`);
+
+            // Step 3: Set new webhook
+            await axios.post(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/setWebhook`, {
+                url: WEBHOOK_URL
+            });
+
+            // Log only in development mode
+            if (process.env.NODE_ENV !== "production") {
+                console.log("Webhook updated successfully:", WEBHOOK_URL);
+            }
+        }
+    } catch (error) {
+        console.error("Webhook update failed:", error.response?.data || error.message);
+    }
+};
+
+// Update webhook when bot starts
+updateWebhook();
 
 interface SaveResponseData {
     chatId?: number;
@@ -398,32 +425,34 @@ cron.schedule("29 18 * * *", async () => {  // Runs at 11:59 PM IST
     try {
         const today = new Date().toISOString().split("T")[0];
 
-        const users = await TeleUser.find({
-            "dailyResponses.date": today,
-            "dailyResponses.responses.answer": { $exists: true, $eq: "" }
-        });
-
-        // console.log(`Checking for missed responses. Users to update: ${users.length}`);
+        const users = await TeleUser.find({ "dailyResponses.date": today });
 
         for (const user of users) {
             const dailyResponse = user.dailyResponses.find(d => d.date === today);
 
             if (dailyResponse) {
-                dailyResponse.responses.push({
-                    question: "Missed",
-                    answer: "No response",
-                    timestamp: new Date()
-                });
-                if (user.chatId)
-                    bot.sendMessage(user.chatId, "You missed today's check-in! Make sure to answer tomorrow. ✅");
-                await user.save();
-                // console.log(`Marked user ${user.userId} as "Missed"`);
+                const hasValidResponse = dailyResponse.responses.some(
+                    r => r.question && r.answer && r.answer.trim() !== ""
+                );
+
+                if (!hasValidResponse) { 
+                    dailyResponse.responses.push({
+                        question: "Missed",
+                        answer: "No response",
+                        timestamp: new Date()
+                    });
+
+                    if (user.chatId) {
+                        bot.sendMessage(user.chatId, "You missed today's check-in! Make sure to answer tomorrow. ✅");
+                    }
+
+                    await user.save();
+                }
             }
         }
-
-        // console.log("Missed check-in process completed.");
     } catch (error) {
         // console.error("Error in missed check-in cron job:", error);
     }
 });
+
 export { bot };
