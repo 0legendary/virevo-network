@@ -5,8 +5,14 @@ import TelegramBot from 'node-telegram-bot-api';
 import cron from 'node-cron';
 dotenv.config()
 
+
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
-const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN as string, { polling: true });
+const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN as string, { webHook: true });
+
+// Set webhook for Telegram updates
+const WEBHOOK_URL = `${process.env.BACKEND_URL}/webhook`;
+
+bot.setWebHook(WEBHOOK_URL);
 
 interface SaveResponseData {
     chatId?: number;
@@ -35,15 +41,16 @@ export const getAIResponse = async (userMessage: string, context?: string): Prom
         
                 - **Proactive Questioning:** Your main objective is to ask engaging and relevant questions to understand what the user has accomplished or learned.
                 - **Dynamic Responses:** Avoid repeating the same questions. Instead, adapt your responses to the user's input and the flow of the conversation.
+                - **Adaptive Motivation:** If the user didn’t make progress, generate a **context-aware motivational message** based on their response (e.g., if they say "I was too busy with work," acknowledge their workload and encourage them accordingly).
                 - **Creative Prompts:** Use humor, emojis, and engaging language to keep the conversation lively and fun. 😄
-                - **Tool Specific Inquiries:** If the user mentions tools like Blender, DaVinci Resolve, Unreal Engine, or NVIDIA tools, ask specific follow-up questions related to their use (e.g., "Did you focus on modeling, animation, or texturing in Blender today? 🎨").
+                - **Tool Specific Inquiries:** If the user mentions tools like Blender, DaVinci Resolve, Unreal Engine, or NVIDIA tools, Animations, Coding, Python, or JavaScript, ask specific follow-up questions related to their use (e.g., "Did you focus on modeling, animation, or texturing in Blender today? 🎨").
                 - **Learning Focus:** If the user mentions learning something new without specifying, ask "What was the most exciting thing you learned today? 🤔".
-                - **Gentle Redirection:** If the user deviates from the topic, gently steer them back by relating their current topic to animation or game development. Use creative transitions like, "That's interesting! Speaking of creativity, did you work on any projects today?".
+                - **Gentle Redirection:** If the user deviates from the topic, gently steer them back by relating their current topic to animation or game development or coding . Use creative transitions like, "That's interesting! Speaking of creativity, did you work on any projects today?".
                 - **Encouragement and Engagement:** If the user reports no progress, offer encouragement and suggest ways to get started. "No worries! Tomorrow is another chance to create something amazing! 🚀".
                 - **Concise Responses:** Keep responses under 25 words for quick, snappy conversations.
                 - **Friendly Farewell:** If the conversation is ending, offer a friendly goodbye and encouragement.
                 - **Situational Awareness:** Avoid repeating questions they've already answered. Adapt your responses to the user's current context.
-                - **No Question Dodging:** If the user avoids answering a question, playfully call them out: "Dodging my question? You're being mysterious today! 🕵️‍♂️".
+                - **No Question Dodging:** If the user avoids answering a question, playfully call them out like "Dodging my question? You're being mysterious today! 🕵️‍♂️ or I thing you are good at chainging topic".
                 - **Topic Shifting:** If the user is disengaged or unresponsive, change the topic with a question like, "Did anything exciting happen today outside of work? 🎉".`
             }
         ];
@@ -349,8 +356,6 @@ bot.on("message", async (msg) => {
             user.dailyResponses.push(dailyResponse);
         }
 
-        const lastResponse = dailyResponse.responses.length > 0 ? dailyResponse.responses[dailyResponse.responses.length - 1] : null;
-
         // Fetch last conversation history
         let lastConversations: { question: string; answer: string }[] = [];
         const responses = dailyResponse.responses.filter(r => r.answer.trim() !== "");
@@ -361,16 +366,16 @@ bot.on("message", async (msg) => {
         let context = lastConversations.map(conv => `Q: ${conv.question}\nA: ${conv.answer}`).join("\n\n");
 
         // ✅ Ensure response is always sent
-        let followUpQuestion = "Hmm... I'm not sure what to say. Can you clarify? 🤔";
+        let botReply = "Hmm... I'm not sure what to say. Can you clarify? 🤔";
 
         try {
-            followUpQuestion = await getAIResponse(userResponse, context);
+            botReply = await getAIResponse(userResponse, context);
         } catch (err) {
             // console.error("AI Response Error:", err);
-            followUpQuestion = "🚧 Our AI system is currently experiencing issues. Please try again later!";
+            botReply = "🚧 Our AI system is currently experiencing issues. Please try again later!";
         }
 
-        bot.sendMessage(chatId, followUpQuestion);
+        bot.sendMessage(chatId, botReply);
 
         // Save response
         await saveResponse({
@@ -379,8 +384,8 @@ bot.on("message", async (msg) => {
             name,
             chatType,
             groupId,
-            question: lastResponse?.question || "What did you learn today?",
-            answer: userResponse,
+            question: userResponse,
+            answer: botReply,
         });
 
     } catch (error) {
