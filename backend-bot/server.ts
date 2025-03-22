@@ -23,8 +23,6 @@ app.get('/health', (req, res) => {
     res.status(200).send('Server is healthy');
 });
 // Set webhook for Telegram bot
-bot.setWebHook(`${BACKEND_URL}/webhook`);
-
 app.post('/webhook', (req, res) => {
     bot.processUpdate(req.body);
     res.sendStatus(200);
