@@ -8,7 +8,7 @@ import axios from "axios";
 
 const DAILY_CHECKIN_TIME = process.env.DAILY_CHECKIN_TIME || "30 14 * * *";
 const MISSED_CHECKIN_TIME = process.env.MISSED_CHECKIN_TIME || "29 18 * * *";
-
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN as string, { webHook: true });
@@ -283,7 +283,7 @@ export const sendDailyCheckIn = async () => {
     //     "Weekend warriors unite! (Or at least try to move from the couch 😆) What’s the plan today?",
     //     "Saturday feels like a cheat day, but let’s sneak in some progress before Monday catches us! 😜"
     // ];
-    
+
     // const sundayMessages = [
     //     "Sunday Funday? More like ‘preparing-for-Monday’ day. 😭 What’s one thing you’re wrapping up today?",
     //     "Even my alarm takes a break today, but here I am... checking in on you! 😅 What’s up?",
@@ -291,7 +291,7 @@ export const sendDailyCheckIn = async () => {
     //     "It’s Sunday! Time to reflect, relax, and realize we have work tomorrow. 😆 What’s your Sunday vibe?",
     //     "I was going to give you the day off… but then I remembered, we don’t do that here. 😂 What’s today’s win?"
     // ];
-    
+
     const saturdayMessages = [
         "I know even the government takes a break today, but not us! 😭 Keep grinding! 💪",
         "Ah, Saturday! The official ‘I'll do it tomorrow’ day. But hey, let’s do something today! 🚀",
@@ -299,7 +299,7 @@ export const sendDailyCheckIn = async () => {
         "Weekend warriors unite! (Or at least try to move from the couch 😆)",
         "Saturday feels like a cheat day, but let’s sneak in some progress before Monday catches us! 😜"
     ];
-    
+
     const sundayMessages = [
         "Sunday Funday? More like ‘preparing-for-Monday’ day. 😭",
         "Even my alarm takes a break today, but here I am... checking in on you! 😅 What’s up?",
@@ -476,8 +476,15 @@ bot.on("message", async (msg) => {
             answer: botReply,
         });
 
-    } catch (error) {
+    } catch (error: unknown) {
         bot.sendMessage(msg.chat.id, "⚠️ Oops! Something went wrong. Please try again later.");
+        if (TELEGRAM_CHAT_ID) {
+            let errorMessage = "Unknown error occurred.";
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            }
+            bot.sendMessage(TELEGRAM_CHAT_ID, `Global Error: ${errorMessage}`);
+        }
     }
 });
 
