@@ -6,6 +6,9 @@ import cron from 'node-cron';
 dotenv.config()
 import axios from "axios";
 
+const DAILY_CHECKIN_TIME = process.env.DAILY_CHECKIN_TIME || "30 14 * * *";
+const MISSED_CHECKIN_TIME = process.env.MISSED_CHECKIN_TIME || "29 18 * * *";
+const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const bot = new TelegramBot(process.env.TELEGRAM_BOT_TOKEN as string, { webHook: true });
@@ -51,6 +54,20 @@ export const getAIResponse = async (userMessage: string, context?: string): Prom
             return goodbyeMessages[randomIndex];
         }
 
+        // Detect when the user reports no progress
+        const noProgressPhrases = [
+            "nothing", "no", "didn't do anything", "not today", "nah", "none", "zero",
+            "nope", "not really", "was busy", "had no time", "didn't get to it", "not much",
+            "wasn't able to", "couldn't", "skipped", "took a break", "lazy day", "procrastinated",
+            "was tired", "too tired", "too busy", "had other things", "forgot", "got distracted",
+            "wasn't feeling it", "didn't feel like it", "no motivation", "lost motivation", "burnt out",
+            "nothing interesting", "same as before", "not in the mood", "meh", "not today, maybe later",
+            "nothing new", "nothing at all", "blank day", "zero progress", "stuck", "no updates",
+            "just chilling", "break day", "no improvement", "no energy"
+        ];
+        const userSaidNoProgress = noProgressPhrases.some(phrase => userMessage.toLowerCase().includes(phrase));
+
+
         let messages: Groq.Chat.Completions.ChatCompletionMessageParam[] = [
             {
                 role: "system",
@@ -67,6 +84,7 @@ export const getAIResponse = async (userMessage: string, context?: string): Prom
                 - **Concise Responses:** Keep responses under 25 words for quick, snappy conversations.
                 - **Friendly Farewell:** If the conversation is ending, offer a friendly goodbye and encouragement.
                 - **Situational Awareness:** Avoid repeating questions they've already answered. Adapt your responses to the user's current context.
+                - **Situational Awareness of reponses:** Do not ask about progress if the user already stated they did nothing.
                 - **No Question Dodging:** If the user avoids answering a question, playfully call them out like "Dodging my question? You're being mysterious today! 🕵️‍♂️ or I thing you are good at chainging topic".
                 - **Topic Shifting:** If the user is disengaged or unresponsive, change the topic with a question like, "Did anything exciting happen today outside of work? 🎉".`
             }
@@ -90,6 +108,17 @@ export const getAIResponse = async (userMessage: string, context?: string): Prom
         });
 
         let aiResponse = response.choices?.[0]?.message?.content?.trim() || "I'm unable to process this right now. 😕";
+        // If the AI response still asks the same question, manually override it
+        if (userSaidNoProgress && /what.*(learn|work|do|today)/i.test(aiResponse)) {
+            const alternativeReplies = [
+                "No worries! 🚀 Tomorrow is another chance to create something amazing! 😄",
+                "Everyone needs a break sometimes! What’s something fun you did today? 🎉",
+                "That’s okay! What’s something you're looking forward to this week? 🌟",
+                "Taking a break is important too! What’s on your mind? 🤔",
+                "No worries! Do you have any ideas for your next project? 🎨"
+            ];
+            return alternativeReplies[Math.floor(Math.random() * alternativeReplies.length)];
+        }
         return aiResponse;
 
     } catch (error) {
@@ -247,6 +276,41 @@ export const sendDailyCheckIn = async () => {
         "Looking back at today, what’s something valuable you learned? 🔎"
     ];
 
+    // const saturdayMessages = [
+    //     "I know even the government takes a break today, but not us! 😭 Keep grinding! 💪",
+    //     "Ah, Saturday! The official ‘I'll do it tomorrow’ day. But hey, let’s do something today! 🚀",
+    //     "It’s the weekend, but success doesn’t take naps… unfortunately. 😂 Let’s get to it! 🔥",
+    //     "Weekend warriors unite! (Or at least try to move from the couch 😆) What’s the plan today?",
+    //     "Saturday feels like a cheat day, but let’s sneak in some progress before Monday catches us! 😜"
+    // ];
+
+    // const sundayMessages = [
+    //     "Sunday Funday? More like ‘preparing-for-Monday’ day. 😭 What’s one thing you’re wrapping up today?",
+    //     "Even my alarm takes a break today, but here I am... checking in on you! 😅 What’s up?",
+    //     "Sunday: The final boss before Monday. Let’s make it count! 🎮",
+    //     "It’s Sunday! Time to reflect, relax, and realize we have work tomorrow. 😆 What’s your Sunday vibe?",
+    //     "I was going to give you the day off… but then I remembered, we don’t do that here. 😂 What’s today’s win?"
+    // ];
+
+    const saturdayMessages = [
+        "I know even the government takes a break today, but not us! 😭 Keep grinding! 💪",
+        "Ah, Saturday! The official ‘I'll do it tomorrow’ day. But hey, let’s do something today! 🚀",
+        "It’s the weekend, but success doesn’t take naps… unfortunately. 😂 Let’s get to it! 🔥",
+        "Weekend warriors unite! (Or at least try to move from the couch 😆)",
+        "Saturday feels like a cheat day, but let’s sneak in some progress before Monday catches us! 😜"
+    ];
+
+    const sundayMessages = [
+        "Sunday Funday? More like ‘preparing-for-Monday’ day. 😭",
+        "Even my alarm takes a break today, but here I am... checking in on you! 😅 What’s up?",
+        "Sunday: The final boss before Monday. Let’s make it count! 🎮",
+        "It’s Sunday! Time to reflect, relax, and realize we have work tomorrow. 😆 What’s your Sunday vibe?",
+        "I was going to give you the day off… but then I remembered, we don’t do that here. 😂"
+    ];
+    const today = new Date().getDay();
+    const isSaturday = today === 6;
+    const isSunday = today === 0;
+
     for (const user of users) {
         // Pick a random question
         const firstQuestion = dailyQuestions[Math.floor(Math.random() * dailyQuestions.length)];
@@ -264,13 +328,20 @@ export const sendDailyCheckIn = async () => {
             question: firstQuestion,
             answer: "",
         });
+        if (isSaturday || isSunday) {
+            const weekendMessage = isSaturday
+                ? saturdayMessages[Math.floor(Math.random() * saturdayMessages.length)]
+                : sundayMessages[Math.floor(Math.random() * sundayMessages.length)];
+
+            bot.sendMessage(user.userId, weekendMessage);
+        }
     }
 };
 
 
 
 // Schedule message every day at 8:00 PM (UTC)
-cron.schedule("30 14 * * *", sendDailyCheckIn);
+cron.schedule(DAILY_CHECKIN_TIME, sendDailyCheckIn);
 
 // Handle user responses
 bot.on("message", async (msg) => {
@@ -405,13 +476,20 @@ bot.on("message", async (msg) => {
             answer: botReply,
         });
 
-    } catch (error) {
+    } catch (error: unknown) {
         bot.sendMessage(msg.chat.id, "⚠️ Oops! Something went wrong. Please try again later.");
+        if (TELEGRAM_CHAT_ID) {
+            let errorMessage = "Unknown error occurred.";
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            }
+            bot.sendMessage(TELEGRAM_CHAT_ID, `Global Error: ${errorMessage}`);
+        }
     }
 });
 
 
-cron.schedule("29 18 * * *", async () => {  // Runs at 11:59 PM IST
+cron.schedule(MISSED_CHECKIN_TIME, async () => {  // Runs at 11:59 PM IST
     try {
         const today = new Date().toISOString().split("T")[0];
 
@@ -446,3 +524,4 @@ cron.schedule("29 18 * * *", async () => {  // Runs at 11:59 PM IST
 });
 
 export { bot };
+

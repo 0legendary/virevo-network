@@ -14,7 +14,7 @@ export interface AuthRequest extends Request {
 
 export const verifyToken = (req: AuthRequest, res: Response, next: NextFunction): void => {
     const token = req.header("Authorization")?.split(" ")[1];
-    console.log(req.cookies?.refreshToken);
+    // console.log(req.cookies?.refreshToken);
     
     if (!token) {
         res.status(401).json({ success: false, message: "Unauthorized" });
