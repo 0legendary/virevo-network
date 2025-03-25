@@ -8,7 +8,7 @@ import { generateAccessToken, generateRefreshToken, TokenPayload, verifyRefreshT
 
 export const refreshToken = async (req: Request, res: Response) => {
     const refreshToken = req.cookies.refreshToken;
-    console.log(refreshToken);
+    console.log("refreshToken cookie",refreshToken);
     
     if (!refreshToken) {
         res.status(401).json({ success: false, message: "Refresh token missing" });
@@ -86,10 +86,12 @@ export const login = async (req: Request, res: Response) => {
 
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production", // Only secure in production
-            sameSite: "strict",
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+            domain: process.env.NODE_ENV === "production" ? process.env.FRONTEND_URL : "localhost",
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        });
+            path: "/",
+          });
 
         const response: ApiResponse = {
             success: true,
@@ -139,11 +141,13 @@ export const googleAuth = async (req: Request, res: Response) => {
 
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            // secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-            domain: 'localhost'
-        });
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+            domain: process.env.NODE_ENV === "production" ? process.env.FRONTEND_URL : "localhost",
+            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+            path: "/",
+          });
+          
 
         const response: ApiResponse = {
             success: true,
@@ -204,10 +208,12 @@ export const signup = async (req: Request, res: Response) => {
 
         res.cookie("refreshToken", refreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production", // Only secure in production
-            sameSite: "strict",
+            secure: process.env.NODE_ENV === "production",
+            sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+            domain: process.env.NODE_ENV === "production" ? process.env.FRONTEND_URL : "localhost",
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        });
+            path: "/",
+          });
         const response: ApiResponse = {
             success: true,
             message: "User registered successfully",

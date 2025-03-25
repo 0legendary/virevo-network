@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import userRoutes from "./src/presentation/routes/userRoutes";
 import authRoutes from "./src/presentation/routes/authRoutes";
 import chatRoutes from "./src/presentation/routes/chatRoutes";
+import cookieParser from "cookie-parser";
 
 import { connectDB } from "./src/config/db";
 import cors from "cors";
@@ -11,6 +12,7 @@ import cors from "cors";
 dotenv.config();
 
 const app = express();
+app.use(cookieParser());
 app.use(express.json());
 
 const allowedOrigins = [
